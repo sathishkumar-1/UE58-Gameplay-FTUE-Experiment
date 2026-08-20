@@ -24,6 +24,8 @@ enum class ECombatFTUEState : uint8
 	Complete
 };
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FCombatFTUEIntegrationHook);
+
 /**
  * Combat run authority. It orchestrates the existing character, enemy, input,
  * damage, spawning, and death systems without implementing parallel gameplay.
@@ -37,6 +39,14 @@ public:
 
 	ACombatGameMode();
 	virtual void Tick(float DeltaSeconds) override;
+
+	/** Reusable integration point fired once when an incomplete player's FTUE flow actually begins. */
+	UPROPERTY(BlueprintAssignable, Category="FTUE|Integration")
+	FCombatFTUEIntegrationHook OnFTUEStarted;
+
+	/** Reusable integration point fired once after the full FTUE flow succeeds. */
+	UPROPERTY(BlueprintAssignable, Category="FTUE|Integration")
+	FCombatFTUEIntegrationHook OnFTUECompleted;
 
 	/** UI/controller entry points. */
 	void HandlePlaySelected();
@@ -92,6 +102,10 @@ protected:
 	/** How long the Tutorial Complete feedback remains visible. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="FTUE|Timing", meta = (ClampMin = "0.0", UIMin = "0.0", Units = "s"))
 	float TutorialCompleteFeedbackDuration = 1.25f;
+
+	/** Local-player save slot used for FTUE completion persistence. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="FTUE|Persistence")
+	FString FTUEProfileSlotName = TEXT("GSGRPlayerProfile");
 
 	/** Current explicit tutorial state. */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Run Flow")
@@ -158,6 +172,8 @@ private:
 	bool bWaitingForDodgeInput = false;
 	bool bDodgeAttackStartDelayElapsed = false;
 	bool bDodgePromptPending = false;
+	bool bFTUEStartedHookFired = false;
+	bool bFTUECompletedHookFired = false;
 	bool bRunActive = false;
 	bool bGameOver = false;
 	float SurvivalTime = 0.0f;

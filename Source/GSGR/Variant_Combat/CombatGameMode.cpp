@@ -17,8 +17,6 @@
 
 namespace
 {
-	const FString CombatProfileSlotName(TEXT("GSGRPlayerProfile"));
-
 #if !UE_BUILD_SHIPPING
 	void ResetFTUEConsoleCommand(UWorld* World)
 	{
@@ -95,24 +93,24 @@ bool ACombatGameMode::ResetFTUEProfile()
 	{
 		Profile = Cast<UCombatFTUESaveGame>(
 			ULocalPlayerSaveGame::LoadOrCreateSaveGameForLocalPlayer(
-				UCombatFTUESaveGame::StaticClass(), LocalController, CombatProfileSlotName));
+				UCombatFTUESaveGame::StaticClass(), LocalController, FTUEProfileSlotName));
 	}
 
 	if (!Profile)
 	{
-		UE_LOG(LogGSGR, Error, TEXT("FTUE.Reset failed: profile '%s' could not be loaded or created."), *CombatProfileSlotName);
+		UE_LOG(LogGSGR, Error, TEXT("FTUE.Reset failed: profile '%s' could not be loaded or created."), *FTUEProfileSlotName);
 		return false;
 	}
 
 	Profile->ResetToDefault();
 	if (!Profile->SaveGameToSlotForLocalPlayer())
 	{
-		UE_LOG(LogGSGR, Error, TEXT("FTUE.Reset failed: profile '%s' could not be saved."), *CombatProfileSlotName);
+		UE_LOG(LogGSGR, Error, TEXT("FTUE.Reset failed: profile '%s' could not be saved."), *FTUEProfileSlotName);
 		return false;
 	}
 
 	FTUESaveGame = Profile;
-	UE_LOG(LogGSGR, Display, TEXT("FTUE.Reset succeeded: bHasCompletedFTUE is false in local-player profile '%s'."), *CombatProfileSlotName);
+	UE_LOG(LogGSGR, Display, TEXT("FTUE.Reset succeeded: bHasCompletedFTUE is false in local-player profile '%s'."), *FTUEProfileSlotName);
 	return true;
 }
 #endif
@@ -190,6 +188,13 @@ void ACombatGameMode::BeginFTUE()
 	FinalSurvivalTime = 0.0f;
 	BindTutorialActors();
 	EnterFTUEState(ECombatFTUEState::Welcome);
+
+	if (!bFTUEStartedHookFired)
+	{
+		bFTUEStartedHookFired = true;
+		UE_LOG(LogGSGR, Display, TEXT("FTUE Started integration hook fired"));
+		OnFTUEStarted.Broadcast();
+	}
 }
 
 void ACombatGameMode::EnterFTUEState(ECombatFTUEState NewState)
@@ -383,6 +388,13 @@ void ACombatGameMode::CompleteFTUE()
 	SaveFTUECompletion();
 	CleanupFTUE();
 	StartNormalGameplay(true);
+
+	if (!bFTUECompletedHookFired)
+	{
+		bFTUECompletedHookFired = true;
+		UE_LOG(LogGSGR, Display, TEXT("FTUE Completed integration hook fired"));
+		OnFTUECompleted.Broadcast();
+	}
 }
 
 void ACombatGameMode::StartNormalGameplay(bool bShowTutorialComplete)
@@ -582,7 +594,7 @@ void ACombatGameMode::LoadFTUEProfile()
 {
 	FTUESaveGame = Cast<UCombatFTUESaveGame>(
 		ULocalPlayerSaveGame::LoadOrCreateSaveGameForLocalPlayer(
-			UCombatFTUESaveGame::StaticClass(), CombatPlayerController, CombatProfileSlotName));
+			UCombatFTUESaveGame::StaticClass(), CombatPlayerController, FTUEProfileSlotName));
 
 	if (!FTUESaveGame)
 	{
