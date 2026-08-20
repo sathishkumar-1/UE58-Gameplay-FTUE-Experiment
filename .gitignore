@@ -1,0 +1,82 @@
+# ==========================================
+# Unreal Engine - Generated Directories
+# ==========================================
+
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# Plugin-generated directories
+Plugins/**/Binaries/
+Plugins/**/Intermediate/
+Plugins/**/DerivedDataCache/
+Plugins/**/Saved/
+
+# ==========================================
+# Visual Studio / IDE generated files
+# ==========================================
+
+.vs/
+.idea/
+
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+
+# VS Code local/generated configuration
+.vscode/
+
+# ==========================================
+# Compiled / generated binaries
+# ==========================================
+
+*.obj
+*.o
+*.lo
+*.slo
+*.pch
+*.gch
+
+*.dll
+*.so
+*.dylib
+*.lib
+*.a
+
+*.exe
+*.app
+*.ipa
+
+# ==========================================
+# Generated project files
+# ==========================================
+
+*.xcodeproj
+*.xcworkspace
+
+# ==========================================
+# OS files
+# ==========================================
+
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ==========================================
+# Logs / temporary files
+# ==========================================
+
+*.log
+*.tmp
+*.temp
+*.bak
+
+# ==========================================
+# Crash dumps
+# ==========================================
+
+*.dmp
