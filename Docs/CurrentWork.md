@@ -1,6 +1,27 @@
 ﻿# Current work / restart handoff
 
-Updated: 2026-09-22, after the normal build/restart and animated Evade PIE tests.
+Updated: 2026-09-23, after the character asset and combat changes were pushed.
+
+## Current checkpoint (2026-09-23)
+
+`main` was pushed to `origin/main` at commit `85cd64e` (Update combat character
+assets and flurry behavior). It includes the user's latest character-mesh
+updates and modified `BP_CombatCharacter`, `BP_CombatEnemy`, and
+`BP_FlurryEnemy` assets, the three user-trimmed retargeted evade animations,
+the repaired and cleanly compiled `ST_CombatEnemy`, the flurry anticipation and
+spacing C++ changes, and the updated combat notes. The new `Dark_Knight` and
+`FreeAnimationLibrary` content and the `LocomotionAnimPack` external actor and
+object assets were also committed using Git LFS. The push uploaded 770 LFS
+objects successfully; the working tree was clean afterward.
+
+The exact character mesh and Blueprint property changes were made by the user
+and have not been independently inventoried or playtested after the import.
+The user's successful Live Coding compiles and the clean StateTree compile are
+the latest compilation checks. A fresh normal build, StateTree-driven enemy
+playtest, and character-mesh visual check remain useful next validation steps.
+
+For future commit-and-push requests, update this handoff with the current
+implementation, validation, remaining work, and commit before pushing.
 
 ## 2026-09-23 visual flurry anticipation update
 
@@ -30,9 +51,8 @@ preserving their transition logic and condition values. ST_CombatEnemy then
 compiled with zero errors and was saved. The red enemy uses its separate
 stationary AI path.
 
-Current worktree also retains the user's three modified retargeted evade
-assets and the unrelated untracked imports. Do not overwrite or stage those
-implicitly. This anticipation change is local; no commit/push was requested.
+The user's retargeted evade assets and imported content are part of `85cd64e`.
+The screenshots and local UI helper under `Saved/` remain ignored.
 
 ## 2026-09-23 red enemy spacing follow-up
 
@@ -154,7 +174,7 @@ and Dodge. Counter watches a NEW exhaustion log line, releases F and clicks once
   EvadeMontage property read warned because that transient field isn't exposed
   to this tool. These are tooling diagnostics, not gameplay failure evidence.
 
-## Git / preservation
+## Earlier Evade commit history / preservation
 
 Branch main; baseline before the animated Evade commit:
 0e4f90d5fddb86ecf09a019a72a55f248d7a648a
@@ -162,13 +182,10 @@ Add red flurry enemy with hold-to-block counter combat.
 The user requested committing and pushing the validated animated Evade work.
 This handoff is included with the implementation, input assets, and all 12
 Mixamo source/retarget assets. Those assets' dependency lists reference this
-Mixamo folder, existing mannequin assets, and engine/plugin assets. Check
-git log and remote status for the resulting commit and publication state.
-Preserve the intended IA_Block deletion. Unrelated imported folders remain
-outside the Evade commit and untouched:
-Content/FreeAnimationLibrary,
-Content/__ExternalActors__/LocomotionAnimPack,
-Content/__ExternalObjects__/LocomotionAnimPack.
+Mixamo folder, existing mannequin assets, and engine/plugin assets. The later
+checkpoint and publication state are recorded at the top of this file.
+Preserve the intended IA_Block deletion. The newer imported folders were
+included in `85cd64e`; see the current checkpoint above.
 
 Git/LFS can fail in sandbox with couldn't create signal pipe / Win32 error 5;
 rerun Git inspection with escalation instead of changing Git/LFS configuration.
