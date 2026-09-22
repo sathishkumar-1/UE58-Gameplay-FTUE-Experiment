@@ -9,6 +9,7 @@
 #include "TimerManager.h"
 #include "CombatEnemy.h"
 #include "CombatCharacter.h"
+#include "CombatGameMode.h"
 #include "Kismet/GameplayStatics.h"
 
 ACombatEnemySpawner::ACombatEnemySpawner()
@@ -86,12 +87,17 @@ void ACombatEnemySpawner::SpawnEnemy()
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-		ACombatEnemy* SpawnedEnemy = GetWorld()->SpawnActor<ACombatEnemy>(EnemyClass, SpawnCapsule->GetComponentTransform(), SpawnParams);
+		const ACombatGameMode* GameMode = GetWorld()->GetAuthGameMode<ACombatGameMode>();
+		const bool bSpawnFlurry = FlurryEnemyClass && GameMode && GameMode->IsRunActive()
+			&& FlurrySpawnChance > 0.0f && (!bHasSpawnedFlurryEnemy || FMath::FRand() < FlurrySpawnChance);
+		const TSubclassOf<ACombatEnemy> SelectedClass = bSpawnFlurry ? FlurryEnemyClass : EnemyClass;
+		ACombatEnemy* SpawnedEnemy = GetWorld()->SpawnActor<ACombatEnemy>(SelectedClass, SpawnCapsule->GetComponentTransform(), SpawnParams);
 
 		// was the enemy successfully created?
 		if (SpawnedEnemy)
 		{
 			ActiveEnemy = SpawnedEnemy;
+			bHasSpawnedFlurryEnemy |= bSpawnFlurry;
 
 			// subscribe to the death delegate
 			SpawnedEnemy->OnEnemyDied.AddDynamic(this, &ACombatEnemySpawner::OnEnemyDied);

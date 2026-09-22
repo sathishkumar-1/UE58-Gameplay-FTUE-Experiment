@@ -13,6 +13,8 @@
 #include "Animation/AnimInstance.h"
 #include "Kismet/GameplayStatics.h"
 #include "CombatCharacter.h"
+#include "Animation/AnimSequence.h"
+#include "UObject/ConstructorHelpers.h"
 
 namespace
 {
@@ -24,6 +26,9 @@ namespace
 ACombatEnemy::ACombatEnemy()
 {
 	PrimaryActorTick.bCanEverTick = true;
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> TiredAsset(
+		TEXT("/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Hvy_01.MM_HitReact_Front_Hvy_01"));
+	ExhaustedAnimation = TiredAsset.Object;
 
 	// bind the attack montage ended delegate
 	OnAttackMontageEnded.BindUObject(this, &ACombatEnemy::AttackMontageEnded);
@@ -70,6 +75,8 @@ void ACombatEnemy::Tick(float DeltaSeconds)
 	if (!IsValid(Player) || !Player->IsAlive())
 	{
 		GetCharacterMovement()->StopMovementImmediately();
+		ResetFlurry();
+		CancelAttacks();
 		return;
 	}
 
@@ -79,6 +86,11 @@ void ACombatEnemy::Tick(float DeltaSeconds)
 	SetActorRotation(FRotator(0.0f, FacingYaw, 0.0f));
 
 	const float CurrentTime = GetWorld()->GetTimeSeconds();
+	if (bFlurryEnemy && FlurryState != ECombatFlurryState::None)
+	{
+		TickFlurry();
+		return;
+	}
 
 	switch (ArenaState)
 	{
@@ -108,6 +120,12 @@ void ACombatEnemy::Tick(float DeltaSeconds)
 
 		if (CurrentTime >= ArenaStateEndTime)
 		{
+			if (bFlurryEnemy && (NormalAttacksSinceFlurry >= MaxNormalAttacksBeforeFlurry || FMath::FRand() < FlurryChance))
+			{
+				BeginFlurryWindup();
+				return;
+			}
+			++NormalAttacksSinceFlurry;
 			DoAIComboAttack();
 			if (bIsAttacking)
 			{
@@ -218,7 +236,7 @@ void ACombatEnemy::AttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 	// call the attack completed delegate so the StateTree can continue execution
 	OnAttackCompleted.ExecuteIfBound();
 
-	if (bUseStationaryArenaAI && IsAlive() && ArenaState != EStationaryArenaState::Recovery)
+	if (bUseStationaryArenaAI && IsAlive() && FlurryState == ECombatFlurryState::None && ArenaState != EStationaryArenaState::Recovery)
 	{
 		EnterArenaRecovery();
 	}
@@ -322,6 +340,15 @@ void ACombatEnemy::DoAttackTrace(FName DamageSourceBone)
 
 void ACombatEnemy::CheckCombo()
 {
+	if (FlurryState == ECombatFlurryState::Flurry && bIsAttacking && ComboSectionNames.Num() > 0)
+	{
+		CurrentComboAttack = (CurrentComboAttack + 1) % ComboSectionNames.Num();
+		if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+		{
+			AnimInstance->Montage_JumpToSection(ComboSectionNames[CurrentComboAttack], ComboAttackMontage);
+		}
+		return;
+	}
 	// increase the combo counter
 	++CurrentComboAttack;
 
@@ -384,6 +411,7 @@ void ACombatEnemy::ApplyDamage(float Damage, AActor* DamageCauser, const FVector
 void ACombatEnemy::HandleDeath()
 {
 	CurrentHP = 0.0f;
+	ResetFlurry();
 	CancelAttacks();
 
 	// hide the life bar
@@ -433,6 +461,18 @@ float ACombatEnemy::TakeDamage(float Damage, struct FDamageEvent const& DamageEv
 	if (CurrentHP <= 0.0f || Damage <= 0.0f)
 	{
 		return 0.0f;
+	}
+	if (bFlurryEnemy && !bTutorialControlled)
+	{
+		// The burst cannot be stun-locked. Its end creates the guaranteed counter window.
+		if (FlurryState == ECombatFlurryState::Windup || FlurryState == ECombatFlurryState::Flurry)
+		{
+			return 0.0f;
+		}
+		if (FlurryState == ECombatFlurryState::Exhausted && Cast<ACombatCharacter>(DamageCauser))
+		{
+			Damage = CurrentHP;
+		}
 	}
 
 	// reduce the current HP
@@ -532,7 +572,7 @@ void ACombatEnemy::CancelAttacks()
 		AnimInstance->Montage_Stop(0.1f, ChargedAttackMontage);
 	}
 
-	if (bUseStationaryArenaAI && IsAlive() && ArenaState != EStationaryArenaState::Recovery)
+	if (bUseStationaryArenaAI && IsAlive() && FlurryState == ECombatFlurryState::None && ArenaState != EStationaryArenaState::Recovery)
 	{
 		EnterArenaRecovery();
 	}
@@ -563,6 +603,7 @@ void ACombatEnemy::SetTutorialControlled(bool bControlled)
 
 	if (bControlled)
 	{
+		ResetFlurry();
 		bTutorialDodgeWindowConsumed = true;
 		CancelAttacks();
 		bTutorialDodgeWindowConsumed = false;

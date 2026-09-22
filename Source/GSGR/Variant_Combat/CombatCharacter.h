@@ -110,6 +110,14 @@ protected:
 	UPROPERTY(EditAnywhere, Category ="Input")
 	UInputAction* ChargedAttackAction;
 
+	UPROPERTY(EditAnywhere, Category="Input")
+	UInputAction* BlockAction;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Block")
+	bool bIsBlocking = false;
+	bool bAllowBlockInput = false;
+	float LastBlockedHitTime = -1000.0f;
+
 	/** Toggle Camera Side Input Action */
 	UPROPERTY(EditAnywhere, Category ="Input")
 	UInputAction* ToggleCameraAction;
@@ -331,6 +339,18 @@ public:
 
 	/** Starts the stationary backward dodge. */
 	void DoBackDodge();
+
+	UFUNCTION(BlueprintCallable, Category="Block")
+	void StartBlocking();
+
+	UFUNCTION(BlueprintCallable, Category="Block")
+	void StopBlocking();
+
+	UFUNCTION(BlueprintPure, Category="Block")
+	bool IsBlocking() const { return bIsBlocking; }
+	bool HasJustBlockedHit() const;
+	void SetBlockingAllowed(bool bAllowed);
+	const UInputAction* GetBlockAction() const { return BlockAction; }
 
 	/** Restricts existing actions without creating tutorial-specific input paths. */
 	void SetCombatInputPermissions(bool bAllowLightAttack, bool bAllowHeavyAttack, bool bAllowDodge, bool bCancelDisallowedAction = true);

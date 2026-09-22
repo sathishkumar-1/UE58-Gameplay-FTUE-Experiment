@@ -195,7 +195,7 @@ void ACombatCharacter::DoLook(float Yaw, float Pitch)
 
 void ACombatCharacter::DoComboAttackStart()
 {
-	if (!bAllowLightAttackInput || !IsAlive() || IsBackDodgeActive())
+	if (!bAllowLightAttackInput || !IsAlive() || IsBackDodgeActive() || bIsBlocking)
 	{
 		return;
 	}
@@ -220,7 +220,7 @@ void ACombatCharacter::DoComboAttackEnd()
 
 void ACombatCharacter::DoChargedAttackStart()
 {
-	if (!bAllowHeavyAttackInput || !IsAlive() || IsBackDodgeActive())
+	if (!bAllowHeavyAttackInput || !IsAlive() || IsBackDodgeActive() || bIsBlocking)
 	{
 		return;
 	}
@@ -268,7 +268,7 @@ void ACombatCharacter::DoChargedAttackEnd()
 
 void ACombatCharacter::DoBackDodge()
 {
-	if (!bAllowDodgeInput || !bStationaryCombatMode || !bHasStationaryCombatTransform || !IsAlive() || IsBackDodgeActive())
+	if (!bAllowDodgeInput || !bStationaryCombatMode || !bHasStationaryCombatTransform || !IsAlive() || IsBackDodgeActive() || bIsBlocking)
 	{
 		return;
 	}
@@ -326,6 +326,7 @@ void ACombatCharacter::DoBackDodge()
 
 void ACombatCharacter::SetCombatInputPermissions(bool bAllowLightAttack, bool bAllowHeavyAttack, bool bAllowDodge, bool bCancelDisallowedAction)
 {
+	if (!bAllowLightAttack && !bAllowHeavyAttack && !bAllowDodge) SetBlockingAllowed(false);
 	bAllowLightAttackInput = bAllowLightAttack;
 	bAllowHeavyAttackInput = bAllowHeavyAttack;
 	bAllowDodgeInput = bAllowDodge;
@@ -668,6 +669,7 @@ void ACombatCharacter::ApplyDamage(float Damage, AActor* DamageCauser, const FVe
 
 void ACombatCharacter::HandleDeath()
 {
+	StopBlocking();
 	CurrentHP = 0.0f;
 	if (IsBackDodgeActive())
 	{
@@ -733,6 +735,15 @@ float ACombatCharacter::TakeDamage(float Damage, struct FDamageEvent const& Dama
 	if (CurrentHP <= 0.0f || Damage <= 0.0f || IsDodgeInvulnerable())
 	{
 		return 0.0f;
+	}
+	if (bIsBlocking && CombatEnemy)
+	{
+		const FVector ToEnemy = (CombatEnemy->GetActorLocation() - GetActorLocation()).GetSafeNormal2D();
+		if (FVector::DotProduct(GetActorForwardVector(), ToEnemy) >= 0.0f)
+		{
+			LastBlockedHitTime = GetWorld()->GetTimeSeconds();
+			return 0.0f;
+		}
 	}
 
 	// reduce the current HP
@@ -956,6 +967,12 @@ void ACombatCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &ACombatCharacter::Look);
 
 		// Combo Attack
+		if (BlockAction)
+		{
+			EnhancedInputComponent->BindAction(BlockAction, ETriggerEvent::Triggered, this, &ACombatCharacter::StartBlocking);
+			EnhancedInputComponent->BindAction(BlockAction, ETriggerEvent::Completed, this, &ACombatCharacter::StopBlocking);
+			EnhancedInputComponent->BindAction(BlockAction, ETriggerEvent::Canceled, this, &ACombatCharacter::StopBlocking);
+		}
 		EnhancedInputComponent->BindAction(ComboAttackAction, ETriggerEvent::Started, this, &ACombatCharacter::ComboAttackPressed);
 
 		// Charged Attack
@@ -969,6 +986,7 @@ void ACombatCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 void ACombatCharacter::NotifyControllerChanged()
 {
+	StopBlocking();
 	Super::NotifyControllerChanged();
 
 	// update the respawn transform on the Player Controller

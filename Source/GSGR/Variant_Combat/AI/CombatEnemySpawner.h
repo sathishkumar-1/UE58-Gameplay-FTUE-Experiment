@@ -37,6 +37,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy Spawner")
 	TSubclassOf<ACombatEnemy> EnemyClass;
 
+	/** Optional red variant, used only after normal gameplay begins. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy Spawner")
+	TSubclassOf<ACombatEnemy> FlurryEnemyClass;
+
+	UPROPERTY(EditAnywhere, Category="Enemy Spawner", meta=(ClampMin="0", ClampMax="1"))
+	float FlurrySpawnChance = 0.5f;
+	bool bHasSpawnedFlurryEnemy = false;
+
 	/** If true, the first enemy will be spawned as soon as the game starts */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy Spawner")
 	bool bShouldSpawnEnemiesImmediately = true;

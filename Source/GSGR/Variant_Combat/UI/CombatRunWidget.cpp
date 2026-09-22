@@ -2,6 +2,10 @@
 
 #include "CombatRunWidget.h"
 #include "Variant_Combat/CombatPlayerController.h"
+#include "Variant_Combat/CombatCharacter.h"
+#include "Variant_Combat/CombatGameMode.h"
+#include "Variant_Combat/AI/CombatEnemy.h"
+#include "EngineUtils.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/BackgroundBlur.h"
 #include "Components/Border.h"
@@ -107,6 +111,49 @@ void UCombatRunWidget::BuildWidgetTree()
 	PlayButton = AddMenuButton(WidgetTree, Content, NSLOCTEXT("CombatRunUI", "Play", "Play"));
 	RestartButton = AddMenuButton(WidgetTree, Content, NSLOCTEXT("CombatRunUI", "Restart", "Restart"));
 	QuitButton = AddMenuButton(WidgetTree, Content, NSLOCTEXT("CombatRunUI", "Quit", "Quit"));
+
+	CombatCueText = WidgetTree->ConstructWidget<UTextBlock>();
+	ConfigureText(CombatCueText, 26, FLinearColor::White);
+	UOverlaySlot* CueSlot = Root->AddChildToOverlay(CombatCueText);
+	CueSlot->SetHorizontalAlignment(HAlign_Fill);
+	CueSlot->SetVerticalAlignment(VAlign_Top);
+	CueSlot->SetPadding(FMargin(20.0f, 60.0f));
+	BlockStatusText = WidgetTree->ConstructWidget<UTextBlock>();
+	ConfigureText(BlockStatusText, 22, FLinearColor::White);
+	UOverlaySlot* BlockSlot = Root->AddChildToOverlay(BlockStatusText);
+	BlockSlot->SetHorizontalAlignment(HAlign_Fill);
+	BlockSlot->SetVerticalAlignment(VAlign_Bottom);
+	BlockSlot->SetPadding(FMargin(20.0f, 32.0f));
+}
+
+void UCombatRunWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+	const ACombatGameMode* Mode = GetWorld()->GetAuthGameMode<ACombatGameMode>();
+	const ACombatCharacter* Player = Cast<ACombatCharacter>(GetOwningPlayerPawn());
+	const ACombatPlayerController* Controller = Cast<ACombatPlayerController>(GetOwningPlayer());
+	const bool bShowCombat = Mode && Mode->IsRunActive() && Player && Player->IsAlive();
+	CombatCueText->SetVisibility(bShowCombat ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	BlockStatusText->SetVisibility(bShowCombat ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	if (!bShowCombat) return;
+
+	const FText Binding = Controller ? Controller->GetBindingDisplayText(Player->GetBlockAction()) : FText::GetEmpty();
+	BlockStatusText->SetText(Player->IsBlocking()
+		? (Player->HasJustBlockedHit() ? NSLOCTEXT("Block", "Hit", "BLOCKED!") : NSLOCTEXT("Block", "Hold", "GUARD UP - release to attack"))
+		: FText::Format(NSLOCTEXT("Block", "Hint", "Hold {0} to block"), Binding));
+	BlockStatusText->SetColorAndOpacity(Player->IsBlocking() ? FLinearColor(0.2f, 0.85f, 1.0f) : FLinearColor::White);
+
+	const ACombatEnemy* NearestEnemy = nullptr;
+	double NearestDistance = TNumericLimits<double>::Max();
+	for (TActorIterator<ACombatEnemy> It(GetWorld()); It; ++It)
+	{
+		if (!It->IsAlive() || !It->IsFlurryEnemy()) continue;
+		const double Distance = FVector::DistSquared(It->GetActorLocation(), Player->GetActorLocation());
+		if (Distance < NearestDistance) { NearestEnemy = *It; NearestDistance = Distance; }
+	}
+	CombatCueText->SetText(NearestEnemy ? NearestEnemy->GetCombatCue() : FText::GetEmpty());
+	CombatCueText->SetColorAndOpacity(NearestEnemy && NearestEnemy->GetFlurryState() == ECombatFlurryState::Exhausted
+		? FLinearColor(0.3f, 1.0f, 0.35f) : FLinearColor(1.0f, 0.65f, 0.3f));
 }
 
 void UCombatRunWidget::ShowStartupMenu()

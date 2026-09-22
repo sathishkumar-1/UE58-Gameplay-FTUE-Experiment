@@ -15,6 +15,17 @@ class UCombatLifeBar;
 class UAnimMontage;
 class ACombatCharacter;
 class ACombatEnemy;
+class UAnimSequence;
+
+UENUM(BlueprintType)
+enum class ECombatFlurryState : uint8
+{
+	None,
+	Windup,
+	Flurry,
+	Exhausted,
+	Recovering
+};
 
 /** Completed attack animation delegate for StateTree */
 DECLARE_DELEGATE(FOnEnemyAttackCompleted);
@@ -60,6 +71,60 @@ public:
 
 	/** Returns whether run flow currently owns this enemy for the FTUE. */
 	bool IsTutorialControlled() const { return bTutorialControlled; }
+
+	UFUNCTION(BlueprintPure, Category="Flurry Enemy")
+	bool IsFlurryEnemy() const { return bFlurryEnemy; }
+
+	UFUNCTION(BlueprintPure, Category="Flurry Enemy")
+	ECombatFlurryState GetFlurryState() const { return FlurryState; }
+
+	/** Brief combat cue for the HUD; normal enemies return no cue. */
+	FText GetCombatCue() const;
+
+protected:
+	/** Enable on the red enemy Blueprint; the original dummy keeps its existing brain. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Flurry Enemy")
+	bool bFlurryEnemy = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Flurry Enemy", meta=(ClampMin="0", ClampMax="1"))
+	float FlurryChance = 0.5f;
+
+	/** Prevent random selection from withholding the signature attack indefinitely. */
+	UPROPERTY(EditAnywhere, Category="Flurry Enemy", meta=(ClampMin="1"))
+	int32 MaxNormalAttacksBeforeFlurry = 2;
+
+	UPROPERTY(EditAnywhere, Category="Flurry Enemy|Timing", meta=(ClampMin="0.1", Units="s"))
+	float FlurryWindupDuration = 0.45f;
+
+	UPROPERTY(EditAnywhere, Category="Flurry Enemy|Timing", meta=(ClampMin="1", ClampMax="2", Units="s"))
+	float FlurryDuration = 1.5f;
+
+	UPROPERTY(EditAnywhere, Category="Flurry Enemy|Timing", meta=(ClampMin="0.5", ClampMax="1", Units="s"))
+	float ExhaustedDuration = 0.75f;
+
+	UPROPERTY(EditAnywhere, Category="Flurry Enemy|Timing", meta=(ClampMin="0.1", Units="s"))
+	float FlurryRecoveryDuration = 0.35f;
+
+	UPROPERTY(EditAnywhere, Category="Flurry Enemy|Animation", meta=(ClampMin="1", ClampMax="4"))
+	float FlurryPlayRate = 2.0f;
+
+	/** Optional dedicated tired animation; defaults to the existing heavy hit reaction. */
+	UPROPERTY(EditDefaultsOnly, Category="Flurry Enemy|Animation")
+	TObjectPtr<UAnimSequence> ExhaustedAnimation;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Flurry Enemy")
+	ECombatFlurryState FlurryState = ECombatFlurryState::None;
+
+	float FlurryStateEndTime = 0.0f;
+	int32 NormalAttacksSinceFlurry = 0;
+	UPROPERTY(Transient)
+	TObjectPtr<UAnimMontage> ExhaustedMontage;
+
+	void BeginFlurryWindup();
+	void TickFlurry();
+	void PlayFlurryMontage();
+	void FinishFlurry();
+	void ResetFlurry();
 
 protected:
 

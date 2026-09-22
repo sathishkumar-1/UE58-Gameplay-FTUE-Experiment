@@ -60,6 +60,9 @@ public:
 	UFUNCTION(BlueprintPure, Category="Run Flow")
 	float GetSurvivalTime() const { return SurvivalTime; }
 
+	UFUNCTION(BlueprintPure, Category="Run Flow")
+	bool IsRunActive() const { return bRunActive && !bGameOver; }
+
 #if !UE_BUILD_SHIPPING
 	/** Resets and persists the existing local-player FTUE profile for FTUE.Reset. */
 	bool ResetFTUEProfile();

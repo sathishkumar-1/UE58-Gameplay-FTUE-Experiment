@@ -29,6 +29,7 @@ public:
 protected:
 
 	virtual void NativeOnInitialized() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 	UFUNCTION()
 	void HandlePlayClicked();
@@ -58,6 +59,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ScoreText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> CombatCueText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> BlockStatusText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> PlayButton;
