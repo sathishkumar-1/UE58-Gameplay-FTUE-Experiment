@@ -64,7 +64,7 @@ private:
 	TObjectPtr<UTextBlock> CombatCueText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> BlockStatusText;
+	TObjectPtr<UTextBlock> EvadeStatusText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> PlayButton;

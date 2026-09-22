@@ -123,9 +123,9 @@ FText ACombatEnemy::GetCombatCue() const
 	if (!bFlurryEnemy || !IsAlive() || bTutorialControlled) return FText::GetEmpty();
 	switch (FlurryState)
 	{
-	case ECombatFlurryState::Windup: return NSLOCTEXT("Flurry", "Windup", "FLURRY INCOMING - HOLD BLOCK");
-	case ECombatFlurryState::Flurry: return NSLOCTEXT("Flurry", "Burst", "KEEP BLOCKING");
-	case ECombatFlurryState::Exhausted: return NSLOCTEXT("Flurry", "Counter", "EXHAUSTED - RELEASE BLOCK AND PUNCH!");
+	case ECombatFlurryState::Windup: return NSLOCTEXT("Flurry", "Windup", "FLURRY INCOMING - HOLD EVADE");
+	case ECombatFlurryState::Flurry: return NSLOCTEXT("Flurry", "Burst", "KEEP EVADING");
+	case ECombatFlurryState::Exhausted: return NSLOCTEXT("Flurry", "Counter", "EXHAUSTED - RELEASE EVADE AND PUNCH!");
 	case ECombatFlurryState::Recovering: return NSLOCTEXT("Flurry", "Recover", "RECOVERING");
 	default: return NSLOCTEXT("Flurry", "Ready", "RED ENEMY - WATCH FOR THE FLURRY");
 	}

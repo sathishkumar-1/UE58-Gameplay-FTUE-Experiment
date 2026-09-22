@@ -12,6 +12,7 @@
 class USpringArmComponent;
 class UCameraComponent;
 class UInputAction;
+class UAnimSequence;
 struct FInputActionValue;
 class UCombatLifeBar;
 class UWidgetComponent;
@@ -111,12 +112,28 @@ protected:
 	UInputAction* ChargedAttackAction;
 
 	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* BlockAction;
+	UInputAction* EvadeAction;
 
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Block")
-	bool bIsBlocking = false;
-	bool bAllowBlockInput = false;
-	float LastBlockedHitTime = -1000.0f;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Evade")
+	bool bIsEvading = false;
+	bool bAllowEvadeInput = false;
+	float LastEvadedHitTime = -1000.0f;
+
+	/** In-place mannequin-retargeted motions, chosen without consecutive repeats. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Evade")
+	TArray<TObjectPtr<UAnimSequence>> EvadeAnimations;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Evade", meta=(ClampMin="0.1", ClampMax="3.0"))
+	float EvadePlayRate = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Evade", meta=(ClampMin="0.0", ClampMax="0.3", Units="s"))
+	float EvadeBlendTime = 0.12f;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAnimMontage> EvadeMontage;
+
+	int32 LastEvadeAnimationIndex = INDEX_NONE;
+	void UpdateEvadeAnimation();
 
 	/** Toggle Camera Side Input Action */
 	UPROPERTY(EditAnywhere, Category ="Input")
@@ -340,17 +357,17 @@ public:
 	/** Starts the stationary backward dodge. */
 	void DoBackDodge();
 
-	UFUNCTION(BlueprintCallable, Category="Block")
-	void StartBlocking();
+	UFUNCTION(BlueprintCallable, Category="Evade")
+	void StartEvading();
 
-	UFUNCTION(BlueprintCallable, Category="Block")
-	void StopBlocking();
+	UFUNCTION(BlueprintCallable, Category="Evade")
+	void StopEvading();
 
-	UFUNCTION(BlueprintPure, Category="Block")
-	bool IsBlocking() const { return bIsBlocking; }
-	bool HasJustBlockedHit() const;
-	void SetBlockingAllowed(bool bAllowed);
-	const UInputAction* GetBlockAction() const { return BlockAction; }
+	UFUNCTION(BlueprintPure, Category="Evade")
+	bool IsEvading() const { return bIsEvading; }
+	bool HasJustEvadedHit() const;
+	void SetEvadingAllowed(bool bAllowed);
+	const UInputAction* GetEvadeAction() const { return EvadeAction; }
 
 	/** Restricts existing actions without creating tutorial-specific input paths. */
 	void SetCombatInputPermissions(bool bAllowLightAttack, bool bAllowHeavyAttack, bool bAllowDodge, bool bCancelDisallowedAction = true);

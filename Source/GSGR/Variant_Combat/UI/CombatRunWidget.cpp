@@ -118,12 +118,12 @@ void UCombatRunWidget::BuildWidgetTree()
 	CueSlot->SetHorizontalAlignment(HAlign_Fill);
 	CueSlot->SetVerticalAlignment(VAlign_Top);
 	CueSlot->SetPadding(FMargin(20.0f, 60.0f));
-	BlockStatusText = WidgetTree->ConstructWidget<UTextBlock>();
-	ConfigureText(BlockStatusText, 22, FLinearColor::White);
-	UOverlaySlot* BlockSlot = Root->AddChildToOverlay(BlockStatusText);
-	BlockSlot->SetHorizontalAlignment(HAlign_Fill);
-	BlockSlot->SetVerticalAlignment(VAlign_Bottom);
-	BlockSlot->SetPadding(FMargin(20.0f, 32.0f));
+	EvadeStatusText = WidgetTree->ConstructWidget<UTextBlock>();
+	ConfigureText(EvadeStatusText, 22, FLinearColor::White);
+	UOverlaySlot* EvadeSlot = Root->AddChildToOverlay(EvadeStatusText);
+	EvadeSlot->SetHorizontalAlignment(HAlign_Fill);
+	EvadeSlot->SetVerticalAlignment(VAlign_Bottom);
+	EvadeSlot->SetPadding(FMargin(20.0f, 32.0f));
 }
 
 void UCombatRunWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
@@ -134,14 +134,14 @@ void UCombatRunWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime
 	const ACombatPlayerController* Controller = Cast<ACombatPlayerController>(GetOwningPlayer());
 	const bool bShowCombat = Mode && Mode->IsRunActive() && Player && Player->IsAlive();
 	CombatCueText->SetVisibility(bShowCombat ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	BlockStatusText->SetVisibility(bShowCombat ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	EvadeStatusText->SetVisibility(bShowCombat ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	if (!bShowCombat) return;
 
-	const FText Binding = Controller ? Controller->GetBindingDisplayText(Player->GetBlockAction()) : FText::GetEmpty();
-	BlockStatusText->SetText(Player->IsBlocking()
-		? (Player->HasJustBlockedHit() ? NSLOCTEXT("Block", "Hit", "BLOCKED!") : NSLOCTEXT("Block", "Hold", "GUARD UP - release to attack"))
-		: FText::Format(NSLOCTEXT("Block", "Hint", "Hold {0} to block"), Binding));
-	BlockStatusText->SetColorAndOpacity(Player->IsBlocking() ? FLinearColor(0.2f, 0.85f, 1.0f) : FLinearColor::White);
+	const FText Binding = Controller ? Controller->GetBindingDisplayText(Player->GetEvadeAction()) : FText::GetEmpty();
+	EvadeStatusText->SetText(Player->IsEvading()
+		? (Player->HasJustEvadedHit() ? NSLOCTEXT("Evade", "Hit", "EVADED!") : NSLOCTEXT("Evade", "Hold", "EVADING - release to attack"))
+		: FText::Format(NSLOCTEXT("Evade", "Hint", "Hold {0} to evade"), Binding));
+	EvadeStatusText->SetColorAndOpacity(Player->IsEvading() ? FLinearColor(0.2f, 0.85f, 1.0f) : FLinearColor::White);
 
 	const ACombatEnemy* NearestEnemy = nullptr;
 	double NearestDistance = TNumericLimits<double>::Max();

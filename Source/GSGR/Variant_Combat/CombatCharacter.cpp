@@ -17,7 +17,10 @@
 #include "CombatPlayerController.h"
 #include "AI/CombatEnemy.h"
 #include "Animation/AnimInstance.h"
+#include "Animation/AnimSequence.h"
 #include "UObject/ConstructorHelpers.h"
+
+DEFINE_LOG_CATEGORY(LogCombatCharacter);
 
 namespace
 {
@@ -51,6 +54,17 @@ ACombatCharacter::ACombatCharacter()
 	}
 
 	// Set size for collision capsule
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> CenterEvade(
+		TEXT("/Game/Variant_Combat/Anims/MIxamo/Retargeted/Center_Block.Center_Block"));
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> LeftEvade(
+		TEXT("/Game/Variant_Combat/Anims/MIxamo/Retargeted/Left_Block.Left_Block"));
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> RightEvade(
+		TEXT("/Game/Variant_Combat/Anims/MIxamo/Retargeted/Right_Block.Right_Block"));
+	if (CenterEvade.Succeeded()) EvadeAnimations.Add(CenterEvade.Object);
+	if (LeftEvade.Succeeded()) EvadeAnimations.Add(LeftEvade.Object);
+	if (RightEvade.Succeeded()) EvadeAnimations.Add(RightEvade.Object);
+
+	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(35.0f, 90.0f);
 
 	// Configure character movement
@@ -81,6 +95,7 @@ ACombatCharacter::ACombatCharacter()
 void ACombatCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	UpdateEvadeAnimation();
 
 	// Keep the living player on its stationary anchor. The dodge is the only
 	// stationary-combat action that intentionally moves the capsule; attack
@@ -195,7 +210,7 @@ void ACombatCharacter::DoLook(float Yaw, float Pitch)
 
 void ACombatCharacter::DoComboAttackStart()
 {
-	if (!bAllowLightAttackInput || !IsAlive() || IsBackDodgeActive() || bIsBlocking)
+	if (!bAllowLightAttackInput || !IsAlive() || IsBackDodgeActive() || bIsEvading)
 	{
 		return;
 	}
@@ -220,7 +235,7 @@ void ACombatCharacter::DoComboAttackEnd()
 
 void ACombatCharacter::DoChargedAttackStart()
 {
-	if (!bAllowHeavyAttackInput || !IsAlive() || IsBackDodgeActive() || bIsBlocking)
+	if (!bAllowHeavyAttackInput || !IsAlive() || IsBackDodgeActive() || bIsEvading)
 	{
 		return;
 	}
@@ -268,7 +283,7 @@ void ACombatCharacter::DoChargedAttackEnd()
 
 void ACombatCharacter::DoBackDodge()
 {
-	if (!bAllowDodgeInput || !bStationaryCombatMode || !bHasStationaryCombatTransform || !IsAlive() || IsBackDodgeActive() || bIsBlocking)
+	if (!bAllowDodgeInput || !bStationaryCombatMode || !bHasStationaryCombatTransform || !IsAlive() || IsBackDodgeActive() || bIsEvading)
 	{
 		return;
 	}
@@ -326,7 +341,7 @@ void ACombatCharacter::DoBackDodge()
 
 void ACombatCharacter::SetCombatInputPermissions(bool bAllowLightAttack, bool bAllowHeavyAttack, bool bAllowDodge, bool bCancelDisallowedAction)
 {
-	if (!bAllowLightAttack && !bAllowHeavyAttack && !bAllowDodge) SetBlockingAllowed(false);
+	if (!bAllowLightAttack && !bAllowHeavyAttack && !bAllowDodge) SetEvadingAllowed(false);
 	bAllowLightAttackInput = bAllowLightAttack;
 	bAllowHeavyAttackInput = bAllowHeavyAttack;
 	bAllowDodgeInput = bAllowDodge;
@@ -669,7 +684,7 @@ void ACombatCharacter::ApplyDamage(float Damage, AActor* DamageCauser, const FVe
 
 void ACombatCharacter::HandleDeath()
 {
-	StopBlocking();
+	StopEvading();
 	CurrentHP = 0.0f;
 	if (IsBackDodgeActive())
 	{
@@ -736,12 +751,12 @@ float ACombatCharacter::TakeDamage(float Damage, struct FDamageEvent const& Dama
 	{
 		return 0.0f;
 	}
-	if (bIsBlocking && CombatEnemy)
+	if (bIsEvading && CombatEnemy)
 	{
 		const FVector ToEnemy = (CombatEnemy->GetActorLocation() - GetActorLocation()).GetSafeNormal2D();
 		if (FVector::DotProduct(GetActorForwardVector(), ToEnemy) >= 0.0f)
 		{
-			LastBlockedHitTime = GetWorld()->GetTimeSeconds();
+			LastEvadedHitTime = GetWorld()->GetTimeSeconds();
 			return 0.0f;
 		}
 	}
@@ -942,6 +957,7 @@ void ACombatCharacter::BeginPlay()
 
 void ACombatCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	StopEvading();
 	Super::EndPlay(EndPlayReason);
 	BackDodgeStates.Remove(this);
 
@@ -967,11 +983,11 @@ void ACombatCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &ACombatCharacter::Look);
 
 		// Combo Attack
-		if (BlockAction)
+		if (EvadeAction)
 		{
-			EnhancedInputComponent->BindAction(BlockAction, ETriggerEvent::Triggered, this, &ACombatCharacter::StartBlocking);
-			EnhancedInputComponent->BindAction(BlockAction, ETriggerEvent::Completed, this, &ACombatCharacter::StopBlocking);
-			EnhancedInputComponent->BindAction(BlockAction, ETriggerEvent::Canceled, this, &ACombatCharacter::StopBlocking);
+			EnhancedInputComponent->BindAction(EvadeAction, ETriggerEvent::Triggered, this, &ACombatCharacter::StartEvading);
+			EnhancedInputComponent->BindAction(EvadeAction, ETriggerEvent::Completed, this, &ACombatCharacter::StopEvading);
+			EnhancedInputComponent->BindAction(EvadeAction, ETriggerEvent::Canceled, this, &ACombatCharacter::StopEvading);
 		}
 		EnhancedInputComponent->BindAction(ComboAttackAction, ETriggerEvent::Started, this, &ACombatCharacter::ComboAttackPressed);
 
@@ -986,7 +1002,7 @@ void ACombatCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 void ACombatCharacter::NotifyControllerChanged()
 {
-	StopBlocking();
+	StopEvading();
 	Super::NotifyControllerChanged();
 
 	// update the respawn transform on the Player Controller

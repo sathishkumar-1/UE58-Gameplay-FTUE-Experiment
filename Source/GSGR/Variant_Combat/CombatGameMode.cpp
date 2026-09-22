@@ -405,7 +405,7 @@ void ACombatGameMode::StartNormalGameplay(bool bShowTutorialComplete)
 	SurvivalTime = 0.0f;
 	FinalSurvivalTime = 0.0f;
 	SetPlayerCombatPermissions(true, true, true);
-	if (CombatPlayer) CombatPlayer->SetBlockingAllowed(true);
+	if (CombatPlayer) CombatPlayer->SetEvadingAllowed(true);
 	CombatPlayerController->SetAwaitingWelcomeInput(false);
 
 	if (bShowTutorialComplete)
