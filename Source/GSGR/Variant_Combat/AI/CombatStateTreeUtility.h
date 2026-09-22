@@ -67,7 +67,7 @@ struct FStateTreeIsInDangerConditionInstanceData
 	
 	/** Character to check danger status on */
 	UPROPERTY(EditAnywhere, Category = "Context")
-	TObjectPtr<ACombatEnemy> Character;
+	TObjectPtr<ACharacter> Character;
 
 	/** Minimum time to wait before reacting to the danger event */
 	UPROPERTY(EditAnywhere, Category = "Parameters", meta = (Units = "s"))
@@ -120,7 +120,7 @@ struct FStateTreeAttackInstanceData
 
 	/** Character that will perform the attack */
 	UPROPERTY(EditAnywhere, Category = Context)
-	TObjectPtr<ACombatEnemy> Character;
+	TObjectPtr<ACharacter> Character;
 };
 
 /**

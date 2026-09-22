@@ -35,18 +35,19 @@ bool FStateTreeIsInDangerCondition::TestCondition(FStateTreeExecutionContext& Co
 {
 	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 
-	// ensure we have a valid enemy character
-	if (InstanceData.Character)
+	// The context binds through ACharacter so Live Coding cannot leave a
+	// transient ACombatEnemy class reference in the StateTree asset.
+	if (const ACombatEnemy* Enemy = Cast<ACombatEnemy>(InstanceData.Character.Get()))
 	{
 		// is the last detected danger event within the reaction threshold?
-		const float ReactionDelta = InstanceData.Character->GetWorld()->GetTimeSeconds() - InstanceData.Character->GetLastDangerTime();
+		const float ReactionDelta = Enemy->GetWorld()->GetTimeSeconds() - Enemy->GetLastDangerTime();
 
 		if (ReactionDelta < InstanceData.MaxReactionTime && ReactionDelta > InstanceData.MinReactionTime)
 		{
 			// do a dot product check to determine if the danger location is within the character's detection cone
-			const FVector DangerDir = (InstanceData.Character->GetLastDangerLocation() - InstanceData.Character->GetActorLocation()).GetSafeNormal2D();
+			const FVector DangerDir = (Enemy->GetLastDangerLocation() - Enemy->GetActorLocation()).GetSafeNormal2D();
 
-			const float DangerDot = FVector::DotProduct(DangerDir, InstanceData.Character->GetActorForwardVector());
+			const float DangerDot = FVector::DotProduct(DangerDir, Enemy->GetActorForwardVector());
 			const float ConeAngleCos = FMath::Cos(FMath::DegreesToRadians(InstanceData.DangerSightConeAngle));
 
 			return DangerDot > ConeAngleCos;
@@ -69,9 +70,11 @@ EStateTreeRunStatus FStateTreeComboAttackTask::EnterState(FStateTreeExecutionCon
 {
 	// get the instance data
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	ACombatEnemy* Enemy = Cast<ACombatEnemy>(InstanceData.Character.Get());
+	if (!IsValid(Enemy)) return EStateTreeRunStatus::Failed;
 
 	// bind to the on attack completed delegate
-	InstanceData.Character->OnAttackCompleted.BindLambda(
+	Enemy->OnAttackCompleted.BindLambda(
 		[WeakContext = Context.MakeWeakExecutionContext()]()
 		{
 			WeakContext.FinishTask(EStateTreeFinishTaskType::Succeeded);
@@ -80,7 +83,7 @@ EStateTreeRunStatus FStateTreeComboAttackTask::EnterState(FStateTreeExecutionCon
 
 
 	// tell the character to do a combo attack
-	InstanceData.Character->DoAIComboAttack();
+	Enemy->DoAIComboAttack();
 
 	return EStateTreeRunStatus::Running;
 }
@@ -91,7 +94,10 @@ void FStateTreeComboAttackTask::ExitState(FStateTreeExecutionContext& Context, c
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 
 	// unbind the on attack completed delegate
-	InstanceData.Character->OnAttackCompleted.Unbind();
+	if (ACombatEnemy* Enemy = Cast<ACombatEnemy>(InstanceData.Character.Get()))
+	{
+		Enemy->OnAttackCompleted.Unbind();
+	}
 }
 
 #if WITH_EDITOR
@@ -107,9 +113,11 @@ EStateTreeRunStatus FStateTreeChargedAttackTask::EnterState(FStateTreeExecutionC
 {
 	// get the instance data
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	ACombatEnemy* Enemy = Cast<ACombatEnemy>(InstanceData.Character.Get());
+	if (!IsValid(Enemy)) return EStateTreeRunStatus::Failed;
 
 	// bind to the on attack completed delegate
-	InstanceData.Character->OnAttackCompleted.BindLambda(
+	Enemy->OnAttackCompleted.BindLambda(
 		[WeakContext = Context.MakeWeakExecutionContext()]()
 		{
 			WeakContext.FinishTask(EStateTreeFinishTaskType::Succeeded);
@@ -117,7 +125,7 @@ EStateTreeRunStatus FStateTreeChargedAttackTask::EnterState(FStateTreeExecutionC
 	);
 
 	// tell the character to do a charged attack
-	InstanceData.Character->DoAIChargedAttack();
+	Enemy->DoAIChargedAttack();
 
 	return EStateTreeRunStatus::Running;
 }
@@ -128,7 +136,10 @@ void FStateTreeChargedAttackTask::ExitState(FStateTreeExecutionContext& Context,
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 
 	// unbind the on attack completed delegate
-	InstanceData.Character->OnAttackCompleted.Unbind();
+	if (ACombatEnemy* Enemy = Cast<ACombatEnemy>(InstanceData.Character.Get()))
+	{
+		Enemy->OnAttackCompleted.Unbind();
+	}
 }
 
 #if WITH_EDITOR
@@ -144,9 +155,11 @@ EStateTreeRunStatus FStateTreeWaitForLandingTask::EnterState(FStateTreeExecution
 {
 	// get the instance data
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	ACombatEnemy* Enemy = Cast<ACombatEnemy>(InstanceData.Character.Get());
+	if (!IsValid(Enemy)) return EStateTreeRunStatus::Failed;
 
 	// bind to the on enemy landed delegate
-	InstanceData.Character->OnEnemyLanded.BindLambda(
+	Enemy->OnEnemyLanded.BindLambda(
 		[WeakContext = Context.MakeWeakExecutionContext()]()
 		{
 			WeakContext.FinishTask(EStateTreeFinishTaskType::Succeeded);
@@ -162,7 +175,10 @@ void FStateTreeWaitForLandingTask::ExitState(FStateTreeExecutionContext& Context
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 
 	// unbind the on enemy landed delegate
-	InstanceData.Character->OnEnemyLanded.Unbind();
+	if (ACombatEnemy* Enemy = Cast<ACombatEnemy>(InstanceData.Character.Get()))
+	{
+		Enemy->OnEnemyLanded.Unbind();
+	}
 }
 
 #if WITH_EDITOR

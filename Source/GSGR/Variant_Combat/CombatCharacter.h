@@ -490,6 +490,13 @@ public:
 	UFUNCTION(BlueprintPure, Category="Combat")
 	bool IsAlive() const { return CurrentHP > 0.0f; }
 
+	/** Position the stationary player returns to after a back dodge. */
+	FVector GetStationaryCombatAnchorLocation() const
+	{
+		return bStationaryCombatMode && bHasStationaryCombatTransform
+			? StationaryCombatTransform.GetLocation() : GetActorLocation();
+	}
+
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 

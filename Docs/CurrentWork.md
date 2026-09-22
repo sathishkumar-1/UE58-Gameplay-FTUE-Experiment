@@ -2,7 +2,58 @@
 
 Updated: 2026-09-22, after the normal build/restart and animated Evade PIE tests.
 
-## Current status
+## 2026-09-23 visual flurry anticipation update
+
+User trimmed/sped up the three retargeted evade clips. They remain modified
+locally and were not edited by the assistant. Added a visible red-enemy windup
+in CombatEnemyFlurry.cpp: sample the existing charged-punch preparation for
+35% of FlurryWindupDuration (0.157 s at current 0.45 s), then hold the fist
+back for the remaining 0.292 s. The montage is paused during windup, so attack
+notifies cannot fire; attack trace is also explicitly gated. The fast combo
+begins after the hold. Reset/death/end-play stop a paused windup.
+
+The first user Live Coding attempt failed because GetSectionStartTime is not
+in UE 5.8. Replaced it with GetSectionStartAndEndTime. The user's second Live
+Coding compile succeeded and patch linked. Floating PIE then showed the pose,
+0.45 s windup-to-burst timing, and 1.5 s burst duration. Holding F through
+repeated flurries kept player HP 5/5. Releasing F during exhaustion and
+punching once killed a red enemy from 3 HP. See FlurryEnemy.md and ignored
+Saved/Screenshots/Flurry_*.png. PIE was stopped and the injected key released.
+
+The Live Coding reload exposed three missing Character context bindings in
+ST_CombatEnemy (Combo Attack, Charged Attack, Wait for Landing), followed by
+five stale danger-condition instances. On 2026-09-23, both C++ instance-data
+fields were changed to bind through ACharacter, with ACombatEnemy casts in the
+implementations. The user ran Live Coding successfully after each C++ change.
+All three tasks and five danger conditions were refreshed in the editor,
+preserving their transition logic and condition values. ST_CombatEnemy then
+compiled with zero errors and was saved. The red enemy uses its separate
+stationary AI path.
+
+Current worktree also retains the user's three modified retargeted evade
+assets and the unrelated untracked imports. Do not overwrite or stage those
+implicitly. This anticipation change is local; no commit/push was requested.
+
+## 2026-09-23 red enemy spacing follow-up
+
+The flurry enemy was chasing the player's transient Space-dodge location,
+while the player returns to a fixed stationary anchor. This could leave the
+enemy too close to the player on return. Its 140 cm attack range also left
+only 70 cm between the two 35 cm collision capsules. The flurry AI now uses
+the player's stationary anchor for approach and facing, and BP_FlurryEnemy
+uses a 200 cm attack range. The basic enemy and dodge animation are unchanged.
+The user ran Live Coding successfully (UBT Result: Succeeded). BP_FlurryEnemy
+compiled with warnings treated as errors. In floating PIE the enemy settled
+at X=1599.23 versus the player's stationary X=1400, about 199 cm apart.
+After a real Space dodge, the player returned to X=1400 and the enemy remained
+at X=1599.23. Screenshots of the windup and burst show visible separation.
+An unguarded enemy attack still reduced player HP to zero over time. In a
+fresh run, releasing F and clicking light punch once during exhaustion reduced
+the red enemy from 3 HP to 0. PIE was stopped and the injected F key released.
+Evidence: Saved/Logs/GSGR.log and ignored Saved/Screenshots/Spacing_*.png,
+Flurry_Hold.png, and Flurry_Burst.png. The user's animation edits were untouched.
+
+## Previous validation status
 
 Animated Evade is implemented and its keyboard gameplay checks passed. No new
 C++ or imported-animation changes were needed in this validation session.

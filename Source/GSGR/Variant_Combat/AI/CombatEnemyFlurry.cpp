@@ -5,6 +5,27 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GSGR.h"
 
+namespace
+{
+	// Draw the fist back quickly, then let the player read the loaded punch pose.
+	constexpr float FlurryWindupDrawFraction = 0.35f;
+
+	float GetWindupPoseTime(const UAnimMontage* Montage, FName ChargeSection)
+	{
+		const int32 SectionIndex = Montage->GetSectionIndex(ChargeSection);
+		float ChargeStart = 0.0f;
+		float ChargeEnd = 0.0f;
+		if (SectionIndex != INDEX_NONE)
+		{
+			Montage->GetSectionStartAndEndTime(SectionIndex, ChargeStart, ChargeEnd);
+		}
+		// The charged montage's Charge section begins with the fist drawn back.
+		// A combo-only enemy can use the opening preparation of its first punch.
+		return FMath::Clamp(ChargeStart > 0.0f ? ChargeStart : 0.12f,
+			0.0f, Montage->GetPlayLength() * 0.5f);
+	}
+}
+
 void ACombatEnemy::BeginFlurryWindup()
 {
 	if (!ComboAttackMontage || ComboSectionNames.IsEmpty() || !GetMesh()->GetAnimInstance())
@@ -16,7 +37,21 @@ void ACombatEnemy::BeginFlurryWindup()
 	FlurryStateEndTime = GetWorld()->GetTimeSeconds() + FMath::Max(0.1f, FlurryWindupDuration);
 	NormalAttacksSinceFlurry = 0;
 	GetCharacterMovement()->StopMovementImmediately();
-	UE_LOG(LogGSGR, Display, TEXT("Flurry enemy: windup"));
+	CancelAttacks();
+	UAnimInstance* Anim = GetMesh()->GetAnimInstance();
+	UAnimMontage* WindupMontage = ChargedAttackMontage ? ChargedAttackMontage : ComboAttackMontage;
+	if (Anim->Montage_Play(WindupMontage) <= 0.0f)
+	{
+		ResetFlurry();
+		EnterArenaRecovery();
+		return;
+	}
+	// Sample only the preparation frames in TickFlurry. Pausing prevents the
+	// attack/charge notifies and root motion from advancing during anticipation.
+	Anim->Montage_Pause(WindupMontage);
+	const float Duration = FMath::Max(0.1f, FlurryWindupDuration);
+	UE_LOG(LogGSGR, Display, TEXT("Flurry enemy: windup (%.3f s: draw %.3f, hold %.3f)"),
+		Duration, Duration * FlurryWindupDrawFraction, Duration * (1.0f - FlurryWindupDrawFraction));
 }
 
 void ACombatEnemy::PlayFlurryMontage()
@@ -46,6 +81,17 @@ void ACombatEnemy::TickFlurry()
 	switch (FlurryState)
 	{
 	case ECombatFlurryState::Windup:
+		if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
+		{
+			UAnimMontage* WindupMontage = ChargedAttackMontage ? ChargedAttackMontage : ComboAttackMontage;
+			if (WindupMontage)
+			{
+				const float Duration = FMath::Max(0.1f, FlurryWindupDuration);
+				const float Elapsed = Now - (FlurryStateEndTime - Duration);
+				const float DrawAlpha = FMath::SmoothStep(0.0f, Duration * FlurryWindupDrawFraction, Elapsed);
+				Anim->Montage_SetPosition(WindupMontage, GetWindupPoseTime(WindupMontage, ChargeLoopSection) * DrawAlpha);
+			}
+		}
 		if (Now >= FlurryStateEndTime)
 		{
 			FlurryState = ECombatFlurryState::Flurry;
@@ -109,6 +155,14 @@ void ACombatEnemy::FinishFlurry()
 
 void ACombatEnemy::ResetFlurry()
 {
+	if (FlurryState == ECombatFlurryState::Windup)
+	{
+		if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
+		{
+			UAnimMontage* WindupMontage = ChargedAttackMontage ? ChargedAttackMontage : ComboAttackMontage;
+			if (WindupMontage) Anim->Montage_Stop(0.1f, WindupMontage);
+		}
+	}
 	FlurryState = ECombatFlurryState::None;
 	FlurryStateEndTime = 0.0f;
 	if (ExhaustedMontage)

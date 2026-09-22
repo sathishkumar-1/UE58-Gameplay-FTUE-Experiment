@@ -80,7 +80,11 @@ void ACombatEnemy::Tick(float DeltaSeconds)
 		return;
 	}
 
-	const float DeltaX = Player->GetActorLocation().X - GetActorLocation().X;
+	// The flurry enemy fights the player's stationary position. Chasing the
+	// temporary back-dodge position lets it crowd the player on the return.
+	const FVector PlayerTarget = bFlurryEnemy
+		? Player->GetStationaryCombatAnchorLocation() : Player->GetActorLocation();
+	const float DeltaX = PlayerTarget.X - GetActorLocation().X;
 	const float DistanceToPlayer = FMath::Abs(DeltaX);
 	const float FacingYaw = DeltaX >= 0.0f ? 0.0f : 180.0f;
 	SetActorRotation(FRotator(0.0f, FacingYaw, 0.0f));
@@ -254,7 +258,7 @@ float ACombatEnemy::GetLastDangerTime() const
 
 void ACombatEnemy::DoAttackTrace(FName DamageSourceBone)
 {
-	if (!IsAlive() || !bIsAttacking)
+	if (!IsAlive() || !bIsAttacking || FlurryState == ECombatFlurryState::Windup)
 	{
 		return;
 	}
@@ -340,6 +344,7 @@ void ACombatEnemy::DoAttackTrace(FName DamageSourceBone)
 
 void ACombatEnemy::CheckCombo()
 {
+	if (FlurryState == ECombatFlurryState::Windup) return;
 	if (FlurryState == ECombatFlurryState::Flurry && bIsAttacking && ComboSectionNames.Num() > 0)
 	{
 		CurrentComboAttack = (CurrentComboAttack + 1) % ComboSectionNames.Num();
@@ -365,6 +370,7 @@ void ACombatEnemy::CheckCombo()
 
 void ACombatEnemy::CheckChargedAttack()
 {
+	if (FlurryState == ECombatFlurryState::Windup) return;
 	// increase the charge loop counter
 	++CurrentChargeLoop;
 
@@ -553,6 +559,7 @@ void ACombatEnemy::BeginPlay()
 
 void ACombatEnemy::EndPlay(EEndPlayReason::Type EndPlayReason)
 {
+	ResetFlurry();
 	Super::EndPlay(EndPlayReason);
 	EnemyMeshStartingTransforms.Remove(this);
 

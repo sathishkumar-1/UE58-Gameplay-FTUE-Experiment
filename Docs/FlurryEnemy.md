@@ -9,7 +9,7 @@ with **Flurry Enemy > Flurry Enemy** enabled in its defaults.
 Approach -> wait -> choose a normal punch or flurry windup.
 
 - Normal punch: existing attack and recovery, then choose again.
-- Flurry: 0.45 s warning -> 1.5 s of accelerated repeating combo punches.
+- Flurry: 0.45 s visual anticipation -> 1.5 s of accelerated repeating combo punches.
 - Exhaustion: 0.75 s counter window. Any successful player hit kills it.
 - Recovery: 0.35 s, then approach/choose again.
 
@@ -23,6 +23,31 @@ Damage is produced by existing montage hit notifies and spatial melee sweeps,
 not a timer that damages the player at any distance. The accelerated combo is
 the prototype flurry animation. The existing mannequin heavy hit reaction is
 reused for exhaustion and can be replaced via `ExhaustedAnimation`.
+
+During anticipation, the red enemy draws back into the charged punch's
+`Charge` pose for about 0.16 s and holds it for about 0.29 s. The existing
+`FlurryWindupDuration` controls the total; drawing uses 35% of that duration.
+The montage is paused and sampled only through its preparation frames, so its
+attack notifies cannot cause early damage. The combo begins after the hold.
+The visual cue is intended to remain readable if HUD warning text is later
+removed. The current HUD warning text is still present.
+
+## Visual anticipation validation (2026-09-23)
+
+- UE 5.8.1 Live Coding compiled and linked the C++ change after replacing an
+  unavailable montage method with `GetSectionStartAndEndTime`.
+- Floating PIE showed the red enemy drawing back and holding its fist before
+  the burst. Logged windup-to-burst intervals stayed around 0.46 seconds, and
+  burst-to-exhaustion around 1.5 seconds. Sampled frames are under
+  `Saved/Screenshots/Flurry_*.png`; the idle pose does not occupy the windup.
+- Holding F through repeated flurries kept player HP at 5/5. Releasing F at
+  exhaustion and landing one light punch changed red-enemy HP from 3 to 0.
+- The user's trimmed/sped-up evade animation assets were not edited.
+- The Live Coding reload exposed three stale `ST_CombatEnemy` task bindings and
+  five danger-condition instances. Their C++ context fields now bind through
+  `ACharacter`; the nodes were refreshed in the editor, then the StateTree
+  compiled with zero errors and was saved. The stationary red-enemy path and
+  counter test also worked in PIE.
 
 ## Player evade
 
@@ -63,10 +88,19 @@ None or its chance to zero to disable this variant on an individual spawner.
 - `AI/CombatEnemy.h`: flurry settings and visible state.
 - `AI/CombatEnemyFlurry.cpp`: phase transitions and animation playback.
 - `AI/CombatEnemy.cpp`: attack selection, combo chaining, and damage rules.
+- `BP_FlurryEnemy.ArenaAttackRange` is 200 cm. Its AI measures this from the
+  stationary player's anchor, so Space's temporary back dodge cannot pull the
+  enemy into the player's return position. The basic enemy retains its range.
+
 - `CombatCharacterEvade.cpp`: evade control and randomized animation chaining.
 - `CombatCharacter.cpp`: Enhanced Input binding and damage prevention.
 - `UI/CombatRunWidget.cpp`: combat cues and binding-aware evade hint.
 - `Materials/MI_FlurryEnemy_01` and `_02`: red overrides for both mannequin slots.
+
+Spacing follow-up validation (2026-09-23): Live Coding succeeded. Floating PIE
+measured a 199 cm player/enemy center distance before and after Space dodge,
+showed a gap during windup and burst, confirmed enemy hits still reach without
+evade, and confirmed one light counter still kills the exhausted 3-HP enemy.
 
 ## Playtest checklist
 
