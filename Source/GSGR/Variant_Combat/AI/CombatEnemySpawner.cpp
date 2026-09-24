@@ -38,7 +38,7 @@ void ACombatEnemySpawner::BeginPlay()
 	BindToPlayerDeath();
 	
 	// should we spawn an enemy right away?
-	if (bShouldSpawnEnemiesImmediately)
+	if (bShouldSpawnEnemiesImmediately && !bDemoManaged)
 	{
 		// schedule the first enemy spawn
 		GetWorld()->GetTimerManager().SetTimer(SpawnTimer, this, &ACombatEnemySpawner::SpawnEnemy, InitialSpawnDelay);
@@ -67,7 +67,7 @@ void ACombatEnemySpawner::EndPlay(EEndPlayReason::Type EndPlayReason)
 void ACombatEnemySpawner::SpawnEnemy()
 {
 	// A timer or activation request must never create a second living enemy.
-	if (bStopped || ActiveEnemy.IsValid())
+	if (bStopped || bDemoManaged || ActiveEnemy.IsValid())
 	{
 		return;
 	}
@@ -127,6 +127,7 @@ void ACombatEnemySpawner::OnEnemyDied()
 		ActiveEnemy->OnEnemyDied.RemoveDynamic(this, &ACombatEnemySpawner::OnEnemyDied);
 	}
 	ActiveEnemy.Reset();
+	if (bDemoManaged) return;
 
 	if (bStopped)
 	{
@@ -183,7 +184,7 @@ void ACombatEnemySpawner::ToggleInteraction(AActor* ActivationInstigator)
 void ACombatEnemySpawner::ActivateInteraction(AActor* ActivationInstigator)
 {
 	// ensure we're only activated once, and only if we've deferred enemy spawning
-	if (bHasBeenActivated || bShouldSpawnEnemiesImmediately)
+	if (bDemoManaged || bHasBeenActivated || bShouldSpawnEnemiesImmediately)
 	{
 		return;
 	}
@@ -198,4 +199,38 @@ void ACombatEnemySpawner::ActivateInteraction(AActor* ActivationInstigator)
 void ACombatEnemySpawner::DeactivateInteraction(AActor* ActivationInstigator)
 {
 	// stub
+}
+
+void ACombatEnemySpawner::SetDemoManaged(bool bManaged)
+{
+	bDemoManaged = bManaged;
+	GetWorldTimerManager().ClearTimer(SpawnTimer);
+}
+
+ACombatEnemy* ACombatEnemySpawner::SpawnDemoEnemy(bool bFlurry)
+{
+	if (!bDemoManaged || ActiveEnemy.IsValid()) return nullptr;
+	const TSubclassOf<ACombatEnemy> ChosenClass = bFlurry ? FlurryEnemyClass : EnemyClass;
+	if (!ChosenClass) return nullptr;
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	ACombatEnemy* Enemy = GetWorld()->SpawnActor<ACombatEnemy>(ChosenClass, SpawnCapsule->GetComponentTransform(), Params);
+	if (Enemy)
+	{
+		ActiveEnemy = Enemy;
+		Enemy->OnEnemyDied.AddUniqueDynamic(this, &ACombatEnemySpawner::OnEnemyDied);
+		OnEnemySpawned.Broadcast(Enemy);
+	}
+	return Enemy;
+}
+
+void ACombatEnemySpawner::ClearDemoEnemy()
+{
+	GetWorldTimerManager().ClearTimer(SpawnTimer);
+	if (ACombatEnemy* Enemy = ActiveEnemy.Get())
+	{
+		Enemy->OnEnemyDied.RemoveDynamic(this, &ACombatEnemySpawner::OnEnemyDied);
+		ActiveEnemy.Reset();
+		Enemy->Destroy();
+	}
 }

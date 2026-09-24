@@ -10,6 +10,7 @@
 #include "Components/BackgroundBlur.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
+#include "Components/Image.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
 #include "Components/SizeBox.h"
@@ -17,6 +18,9 @@
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
+#include "Engine/Texture2D.h"
+#include "HAL/PlatformTime.h"
+#include "UObject/ConstructorHelpers.h"
 
 namespace
 {
@@ -51,6 +55,17 @@ namespace
 	}
 }
 
+UCombatRunWidget::UCombatRunWidget(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	static ConstructorHelpers::FObjectFinder<UTexture2D> FlurryScreenshot(
+		TEXT("/Game/Variant_Combat/UI/T_FlurryReminder.T_FlurryReminder"));
+	if (FlurryScreenshot.Succeeded())
+	{
+		ReminderTexture = FlurryScreenshot.Object;
+	}
+}
+
 void UCombatRunWidget::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
@@ -63,6 +78,8 @@ void UCombatRunWidget::NativeOnInitialized()
 	PlayButton->OnClicked.AddUniqueDynamic(this, &UCombatRunWidget::HandlePlayClicked);
 	RestartButton->OnClicked.AddUniqueDynamic(this, &UCombatRunWidget::HandleRestartClicked);
 	QuitButton->OnClicked.AddUniqueDynamic(this, &UCombatRunWidget::HandleQuitClicked);
+	ReturnButton->OnClicked.AddUniqueDynamic(this, &UCombatRunWidget::HandleReturnClicked);
+	ReminderCloseButton->OnClicked.AddUniqueDynamic(this, &UCombatRunWidget::HandleReminderCloseClicked);
 	HideOverlay();
 }
 
@@ -111,6 +128,54 @@ void UCombatRunWidget::BuildWidgetTree()
 	PlayButton = AddMenuButton(WidgetTree, Content, NSLOCTEXT("CombatRunUI", "Play", "Play"));
 	RestartButton = AddMenuButton(WidgetTree, Content, NSLOCTEXT("CombatRunUI", "Restart", "Restart"));
 	QuitButton = AddMenuButton(WidgetTree, Content, NSLOCTEXT("CombatRunUI", "Quit", "Quit"));
+	ReturnButton = AddMenuButton(WidgetTree, Content, NSLOCTEXT("CombatRunUI", "Return", "Return to Combat"));
+	ReturnButton->SetVisibility(ESlateVisibility::Collapsed);
+
+	USizeBox* ReminderSize = WidgetTree->ConstructWidget<USizeBox>();
+	ReminderSize->SetWidthOverride(360.0f);
+	UOverlaySlot* ReminderSlot = Root->AddChildToOverlay(ReminderSize);
+	ReminderSlot->SetHorizontalAlignment(HAlign_Left);
+	ReminderSlot->SetVerticalAlignment(VAlign_Center);
+	ReminderSlot->SetPadding(FMargin(16.0f, 0.0f));
+	ReminderPanel = WidgetTree->ConstructWidget<UBorder>();
+	ReminderPanel->SetPadding(FMargin(20.0f));
+	ReminderPanel->SetBrushColor(FLinearColor(0.04f, 0.08f, 0.16f, 0.96f));
+	ReminderSize->SetContent(ReminderPanel);
+	UVerticalBox* ReminderContent = WidgetTree->ConstructWidget<UVerticalBox>();
+	ReminderPanel->SetContent(ReminderContent);
+	ReminderCloseButton = AddMenuButton(WidgetTree, ReminderContent, FText::FromString(TEXT("X")));
+	if (UVerticalBoxSlot* CloseSlot = Cast<UVerticalBoxSlot>(ReminderCloseButton->Slot))
+	{
+		CloseSlot->SetPadding(FMargin(220.0f, 0.0f, 0.0f, 6.0f));
+	}
+	UTextBlock* ReminderHeading = WidgetTree->ConstructWidget<UTextBlock>();
+	ConfigureText(ReminderHeading, 34, FLinearColor(0.93f, 0.78f, 0.25f));
+	ReminderHeading->SetText(NSLOCTEXT("FullFlow", "ReminderHeading", "EVADE"));
+	ReminderContent->AddChildToVerticalBox(ReminderHeading);
+	if (ReminderTexture)
+	{
+		USizeBox* ScreenshotSize = WidgetTree->ConstructWidget<USizeBox>();
+		ScreenshotSize->SetWidthOverride(320.0f);
+		ScreenshotSize->SetHeightOverride(190.0f);
+		UBorder* ScreenshotFrame = WidgetTree->ConstructWidget<UBorder>();
+		ScreenshotFrame->SetPadding(FMargin(2.0f));
+		ScreenshotFrame->SetBrushColor(FLinearColor(0.93f, 0.78f, 0.25f));
+		ScreenshotSize->SetContent(ScreenshotFrame);
+		UImage* Screenshot = WidgetTree->ConstructWidget<UImage>();
+		Screenshot->SetBrushFromTexture(ReminderTexture);
+		FSlateBrush ScreenshotBrush = Screenshot->GetBrush();
+		ScreenshotBrush.SetUVRegion(FBox2f(FVector2f(0.24f, 0.44f), FVector2f(0.535f, 0.74f)));
+		Screenshot->SetBrush(ScreenshotBrush);
+		ScreenshotFrame->SetContent(Screenshot);
+		UVerticalBoxSlot* ScreenshotSlot = ReminderContent->AddChildToVerticalBox(ScreenshotSize);
+		ScreenshotSlot->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 12.0f));
+		ScreenshotSlot->SetHorizontalAlignment(HAlign_Center);
+	}
+	UTextBlock* ReminderBody = WidgetTree->ConstructWidget<UTextBlock>();
+	ConfigureText(ReminderBody, 22, FLinearColor::White);
+	ReminderBody->SetText(NSLOCTEXT("FullFlow", "ReminderBody", "Flurry incoming!\nHold F / Left Shoulder through the hits.\nRelease to counter."));
+	ReminderContent->AddChildToVerticalBox(ReminderBody);
+	ReminderPanel->SetVisibility(ESlateVisibility::Collapsed);
 
 	CombatCueText = WidgetTree->ConstructWidget<UTextBlock>();
 	ConfigureText(CombatCueText, 26, FLinearColor::White);
@@ -129,6 +194,19 @@ void UCombatRunWidget::BuildWidgetTree()
 void UCombatRunWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	if (bReminderVisible)
+	{
+		const double Elapsed = FPlatformTime::Seconds() - ReminderAnimationStart;
+		const float Alpha = FMath::Clamp(static_cast<float>(Elapsed / 0.3), 0.0f, 1.0f);
+		ReminderPanel->SetRenderTranslation(FVector2D(bReminderClosing ? -380.0f * Alpha : -380.0f * (1.0f - Alpha), 0.0f));
+		if (bReminderClosing && Alpha >= 1.0f)
+		{
+			if (ACombatPlayerController* Owner = Cast<ACombatPlayerController>(GetOwningPlayer()))
+			{
+				Owner->HandleReminderAnimationFinished();
+			}
+		}
+	}
 	const ACombatGameMode* Mode = GetWorld()->GetAuthGameMode<ACombatGameMode>();
 	const ACombatCharacter* Player = Cast<ACombatCharacter>(GetOwningPlayerPawn());
 	const ACombatPlayerController* Controller = Cast<ACombatPlayerController>(GetOwningPlayer());
@@ -167,6 +245,7 @@ void UCombatRunWidget::ShowStartupMenu()
 	PlayButton->SetVisibility(ESlateVisibility::Visible);
 	RestartButton->SetVisibility(ESlateVisibility::Collapsed);
 	QuitButton->SetVisibility(ESlateVisibility::Collapsed);
+	ReturnButton->SetVisibility(ESlateVisibility::Collapsed);
 	SetMenuInteractionEnabled(true);
 }
 
@@ -181,6 +260,7 @@ void UCombatRunWidget::ShowTutorialMessage(const FText& Heading, const FText& Me
 	PlayButton->SetVisibility(ESlateVisibility::Collapsed);
 	RestartButton->SetVisibility(ESlateVisibility::Collapsed);
 	QuitButton->SetVisibility(ESlateVisibility::Collapsed);
+	ReturnButton->SetVisibility(ESlateVisibility::Collapsed);
 	SetMenuInteractionEnabled(false);
 }
 
@@ -208,6 +288,7 @@ void UCombatRunWidget::ShowGameOver(float FinalSurvivalTime)
 	PlayButton->SetVisibility(ESlateVisibility::Collapsed);
 	RestartButton->SetVisibility(ESlateVisibility::Visible);
 	QuitButton->SetVisibility(ESlateVisibility::Visible);
+	ReturnButton->SetVisibility(ESlateVisibility::Collapsed);
 	SetMenuInteractionEnabled(true);
 }
 
@@ -216,6 +297,48 @@ void UCombatRunWidget::HideOverlay()
 	BackgroundBlur->SetVisibility(ESlateVisibility::Collapsed);
 	MessagePanel->SetVisibility(ESlateVisibility::Collapsed);
 	SetMenuInteractionEnabled(false);
+}
+
+void UCombatRunWidget::ShowShowcase()
+{
+	SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	BackgroundBlur->SetVisibility(ESlateVisibility::Visible);
+	MessagePanel->SetVisibility(ESlateVisibility::Visible);
+	HeadingText->SetText(NSLOCTEXT("FullFlow", "ShowcaseHeading", "Control Recap Showcase"));
+	MessageText->SetText(NSLOCTEXT("FullFlow", "ShowcaseBody",
+		"Light Attack: Left Mouse\nHeavy Attack: Right Mouse\nDodge: Space\nEvade: Hold F\n\nPlaceholder showcase - return for a live flurry encounter."));
+	ScoreText->SetVisibility(ESlateVisibility::Collapsed);
+	PlayButton->SetVisibility(ESlateVisibility::Collapsed);
+	RestartButton->SetVisibility(ESlateVisibility::Collapsed);
+	QuitButton->SetVisibility(ESlateVisibility::Collapsed);
+	ReturnButton->SetVisibility(ESlateVisibility::Visible);
+	ReturnButton->SetIsEnabled(true);
+}
+
+void UCombatRunWidget::ShowEvadeReminder()
+{
+	SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	bReminderVisible = true;
+	bReminderClosing = false;
+	ReminderAnimationStart = FPlatformTime::Seconds();
+	ReminderPanel->SetRenderTranslation(FVector2D(-380.0f, 0.0f));
+	ReminderPanel->SetVisibility(ESlateVisibility::Visible);
+	ReminderCloseButton->SetIsEnabled(true);
+}
+
+void UCombatRunWidget::BeginHideEvadeReminder()
+{
+	if (!bReminderVisible || bReminderClosing) return;
+	bReminderClosing = true;
+	ReminderAnimationStart = FPlatformTime::Seconds();
+	ReminderCloseButton->SetIsEnabled(false);
+}
+
+void UCombatRunWidget::HideEvadeReminder()
+{
+	bReminderVisible = false;
+	bReminderClosing = false;
+	ReminderPanel->SetVisibility(ESlateVisibility::Collapsed);
 }
 
 void UCombatRunWidget::SetMenuInteractionEnabled(bool bEnabled)
@@ -246,5 +369,21 @@ void UCombatRunWidget::HandleQuitClicked()
 	if (ACombatPlayerController* Controller = Cast<ACombatPlayerController>(GetOwningPlayer()))
 	{
 		Controller->HandleQuitSelected();
+	}
+}
+
+void UCombatRunWidget::HandleReturnClicked()
+{
+	if (ACombatPlayerController* Controller = Cast<ACombatPlayerController>(GetOwningPlayer()))
+	{
+		Controller->HandleShowcaseReturnSelected();
+	}
+}
+
+void UCombatRunWidget::HandleReminderCloseClicked()
+{
+	if (ACombatPlayerController* Controller = Cast<ACombatPlayerController>(GetOwningPlayer()))
+	{
+		Controller->HandleReminderCloseSelected();
 	}
 }

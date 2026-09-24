@@ -380,10 +380,10 @@ public:
 	const UInputAction* GetHeavyAttackAction() const { return ChargedAttackAction; }
 	const UInputAction* GetDodgeAction() const { return JumpAction; }
 
-protected:
-
 	/** Resets the character's current HP to maximum */
 	void ResetHP();
+
+protected:
 
 	/** Performs a combo attack */
 	void ComboAttack();

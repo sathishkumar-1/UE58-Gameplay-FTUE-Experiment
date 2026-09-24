@@ -13,7 +13,7 @@ Use this map to find the current owner of a gameplay change. Content asset paths
 | Player stationary movement | `ACombatCharacter` -> `Source/GSGR/Variant_Combat/CombatCharacter.cpp` -> `BeginPlay()`, `Move()`, `DoMove()`; Blueprint Defaults -> **Stationary Combat** |
 | Player walk/movement speed | Stationary mode forces `MaxWalkSpeed = 0` in `ACombatCharacter::BeginPlay()`; non-stationary base default is set in the constructor and can be overridden in `BP_CombatCharacter` -> **Character Movement** |
 | Enemy movement speed | `/Game/Variant_Combat/Blueprints/AI/BP_CombatEnemy` -> **Character Movement -> Max Walk Speed** |
-| Enemy combat distance | `BP_CombatEnemy` -> **Stationary Arena -> ArenaAttackRange** (`ACombatEnemy`) |
+| Enemy combat distance | `BP_CombatEnemy` -> **Stationary Arena -> ArenaAttackRange**; `BP_FlurryEnemy` -> **Flurry Enemy -> Arena -> FlurryArenaAttackRange** (`ACombatEnemy`) |
 | Enemy attack interval/pacing | `BP_CombatEnemy` -> **Stationary Arena -> ArenaAttackWindupDelay**, `ArenaAttackCooldown`, `ArenaAttackDelayVariation` |
 | Enemy difficulty/aggression | `BP_CombatEnemy` -> **Stationary Arena** tuning plus **Character Movement -> Max Walk Speed** and **Damage** |
 | Light Attack | `ACombatCharacter::DoComboAttackStart()`/`ComboAttack()` and `/Game/Variant_Combat/Anims/AM_ComboAttack` |
@@ -57,7 +57,7 @@ Use this map to find the current owner of a gameplay change. Content asset paths
 | --- | --- |
 | Main class/Blueprint | `ACombatEnemy` in `Source/GSGR/Variant_Combat/AI/CombatEnemy.h/.cpp`; `/Game/Variant_Combat/Blueprints/AI/BP_CombatEnemy` |
 | Movement speed | `BP_CombatEnemy` -> **Character Movement -> Max Walk Speed** |
-| Combat distance | Blueprint Defaults -> **Stationary Arena -> ArenaAttackRange** |
+| Combat distance | `BP_CombatEnemy` -> **Stationary Arena -> ArenaAttackRange**; `BP_FlurryEnemy` -> **Flurry Enemy -> Arena -> FlurryArenaAttackRange** |
 | Attack pacing | **Stationary Arena -> ArenaAttackWindupDelay**, `ArenaAttackCooldown`, `ArenaAttackDelayVariation` |
 | Aggression/difficulty | Adjust movement speed, attack range/timing, and **Damage -> MaxHP**/melee damage. The active simple state transitions are in `ACombatEnemy::Tick()` |
 | Attack behaviour | Default stationary loop is Approach -> Wait -> Attack -> Recovery in `ACombatEnemy::Tick()`; attack starts through `DoAIComboAttack()` |

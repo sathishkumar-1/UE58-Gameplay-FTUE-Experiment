@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "Containers/Ticker.h"
 #include "CombatGameMode.generated.h"
 
 class ACombatCharacter;
@@ -21,7 +22,14 @@ enum class ECombatFTUEState : uint8
 	LightAttack,
 	HeavyAttack,
 	Dodge,
-	Complete
+	Complete,
+	Evade
+};
+
+UENUM(BlueprintType)
+enum class EFullFlowStage : uint8
+{
+	None, Tutorial, BasicEncounter, Showcase, PostShowcaseFlurry, Mixed
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FCombatFTUEIntegrationHook);
@@ -47,6 +55,10 @@ public:
 	/** Reusable integration point fired once after the full FTUE flow succeeds. */
 	UPROPERTY(BlueprintAssignable, Category="FTUE|Integration")
 	FCombatFTUEIntegrationHook OnFTUECompleted;
+	UPROPERTY(BlueprintAssignable, Category="Full Flow|Integration")
+	FCombatFTUEIntegrationHook OnShowcaseDeparted;
+	UPROPERTY(BlueprintAssignable, Category="Full Flow|Integration")
+	FCombatFTUEIntegrationHook OnShowcaseReturned;
 
 	/** UI/controller entry points. */
 	void HandlePlaySelected();
@@ -62,6 +74,16 @@ public:
 
 	UFUNCTION(BlueprintPure, Category="Run Flow")
 	bool IsRunActive() const { return bRunActive && !bGameOver; }
+	bool IsFullFlowDemo() const { return bFullFlowDemo; }
+	EFullFlowStage GetFullFlowStage() const { return FullFlowStage; }
+	void HandleTutorialPlayerHit(ACombatEnemy* Enemy, bool bDodgeProtected, bool bEvadeProtected);
+	void HandleDemoSkip();
+	void JumpToShowcase();
+	void JumpToPostShowcase();
+	void HandleShowcaseReturn();
+	void CloseEvadeReminder();
+	void RequestCloseEvadeReminder();
+	bool IsEvadeReminderOpen() const { return bReminderOpen; }
 
 #if !UE_BUILD_SHIPPING
 	/** Resets and persists the existing local-player FTUE profile for FTUE.Reset. */
@@ -139,6 +161,21 @@ private:
 	void RestartAfterIncompleteFTUE();
 	void LoadFTUEProfile();
 	void SaveFTUECompletion();
+	void SetupDemoSpawners();
+	void SpawnTutorialDemoEnemy(bool bFlurry);
+	void ClearDemoEnemy();
+	void RetryCurrentLesson();
+	void PerformLessonRetry();
+	void StartBasicEncounter();
+	void StartPostShowcaseFlurry();
+	void SpawnMixedEnemy();
+	void ShowEvadeReminder();
+	void FinishEvadeReminder();
+	void ResolveDodgeAttempt();
+	void ResetDemoTimers();
+	void DepartForShowcase();
+	UFUNCTION()
+	void HandleDemoEnemyDied();
 
 	UFUNCTION()
 	void HandlePlayerDied();
@@ -187,4 +224,16 @@ private:
 	FTimerHandle DodgePromptTimer;
 	FTimerHandle TutorialCompleteUITimer;
 	FTimerHandle TutorialDeathRestartTimer;
+	FTimerHandle DemoEventTimer;
+	FTimerHandle DodgeResolveTimer;
+	FTSTicker::FDelegateHandle ReminderTickerHandle;
+	TObjectPtr<ACombatEnemySpawner> DemoSpawner;
+	TObjectPtr<ACombatEnemy> DemoEnemy;
+	EFullFlowStage FullFlowStage = EFullFlowStage::None;
+	bool bFullFlowDemo = false;
+	bool bMainMenuLevel = false;
+	bool bShowcaseLevel = false;
+	bool bReminderShown = false;
+	bool bReminderOpen = false;
+	bool bDemoTransitionPending = false;
 };

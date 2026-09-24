@@ -15,6 +15,7 @@
 #include "TimerManager.h"
 #include "Engine/LocalPlayer.h"
 #include "CombatPlayerController.h"
+#include "CombatGameMode.h"
 #include "AI/CombatEnemy.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimSequence.h"
@@ -378,7 +379,10 @@ void ACombatCharacter::ResetHP()
 	CurrentHP = MaxHP;
 
 	// update the life bar
-	LifeBarWidget->SetLifePercentage(1.0f);
+	if (LifeBarWidget)
+	{
+		LifeBarWidget->SetLifePercentage(1.0f);
+	}
 }
 
 void ACombatCharacter::ComboAttack()
@@ -737,12 +741,18 @@ void ACombatCharacter::RespawnCharacter()
 
 float ACombatCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	const ACombatEnemy* CombatEnemy = Cast<ACombatEnemy>(DamageCauser);
+	ACombatEnemy* CombatEnemy = Cast<ACombatEnemy>(DamageCauser);
 	// The FTUE uses the normal enemy montage and melee trace so the dodge lesson
 	// exercises real combat timing. Tutorial ownership is nevertheless a hard
 	// safety boundary: its staged strike must never reduce the player's HP.
 	if (CombatEnemy && CombatEnemy->IsTutorialControlled())
 	{
+		if (ACombatGameMode* RunMode = GetWorld()->GetAuthGameMode<ACombatGameMode>())
+		{
+			const FVector ToEnemy = (CombatEnemy->GetActorLocation() - GetActorLocation()).GetSafeNormal2D();
+			const bool bFrontalEvade = bIsEvading && FVector::DotProduct(GetActorForwardVector(), ToEnemy) >= 0.0f;
+			RunMode->HandleTutorialPlayerHit(CombatEnemy, IsDodgeInvulnerable(), bFrontalEvade);
+		}
 		return 0.0f;
 	}
 

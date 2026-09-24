@@ -89,23 +89,27 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Flurry Enemy", meta=(ClampMin="0", ClampMax="1"))
 	float FlurryChance = 0.5f;
 
+	/** Center-to-center distance at which a flurry enemy stops and begins its attack. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Flurry Enemy|Arena", meta=(EditCondition="bFlurryEnemy", EditConditionHides, ClampMin="0", Units="cm"))
+	float FlurryArenaAttackRange = 200.0f;
+
 	/** Prevent random selection from withholding the signature attack indefinitely. */
 	UPROPERTY(EditAnywhere, Category="Flurry Enemy", meta=(ClampMin="1"))
 	int32 MaxNormalAttacksBeforeFlurry = 2;
 
-	UPROPERTY(EditAnywhere, Category="Flurry Enemy|Timing", meta=(ClampMin="0.1", Units="s"))
+	UPROPERTY(EditAnywhere, Category="Flurry Enemy|Timing", meta=(Units="s"))
 	float FlurryWindupDuration = 0.45f;
 
-	UPROPERTY(EditAnywhere, Category="Flurry Enemy|Timing", meta=(ClampMin="1", ClampMax="2", Units="s"))
+	UPROPERTY(EditAnywhere, Category="Flurry Enemy|Timing", meta=(Units="s"))
 	float FlurryDuration = 1.5f;
 
-	UPROPERTY(EditAnywhere, Category="Flurry Enemy|Timing", meta=(ClampMin="0.5", ClampMax="1", Units="s"))
+	UPROPERTY(EditAnywhere, Category="Flurry Enemy|Timing", meta=(Units="s"))
 	float ExhaustedDuration = 0.75f;
 
-	UPROPERTY(EditAnywhere, Category="Flurry Enemy|Timing", meta=(ClampMin="0.1", Units="s"))
+	UPROPERTY(EditAnywhere, Category="Flurry Enemy|Timing", meta=(Units="s"))
 	float FlurryRecoveryDuration = 0.35f;
 
-	UPROPERTY(EditAnywhere, Category="Flurry Enemy|Animation", meta=(ClampMin="1", ClampMax="4"))
+	UPROPERTY(EditAnywhere, Category="Flurry Enemy|Animation")
 	float FlurryPlayRate = 2.0f;
 
 	/** Optional dedicated tired animation; defaults to the existing heavy hit reaction. */
@@ -133,8 +137,10 @@ protected:
 	bool bUseStationaryArenaAI = true;
 
 	/** Center-to-center distance at which the enemy stops and starts attacking. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stationary Arena")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stationary Arena", meta=(EditCondition="!bFlurryEnemy", EditConditionHides, ClampMin="0", Units="cm"))
 	float ArenaAttackRange = 140.0f;
+
+	float GetArenaAttackRange() const { return bFlurryEnemy ? FlurryArenaAttackRange : ArenaAttackRange; }
 
 	/** Recovery pause after an arena attack completes. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stationary Arena")
@@ -164,6 +170,8 @@ protected:
 
 	/** Small orchestration layer used only while this actor is the FTUE enemy. */
 	bool bTutorialControlled = false;
+	bool bTutorialFlurryRequested = false;
+	bool bTutorialFlurryActive = false;
 	bool bTutorialAttackRequested = false;
 	bool bTutorialDodgeWindowConsumed = false;
 	bool bTutorialAttackFrozen = false;
@@ -311,6 +319,9 @@ public:
 
 	/** Approaches as needed, then starts the existing normal combo attack. */
 	void StartTutorialDodgeAttack(ACombatCharacter* TargetPlayer);
+	/** Runs one real flurry while ordinary AI remains under tutorial control. */
+	void StartTutorialFlurry(ACombatCharacter* TargetPlayer);
+	void AbortTutorialAction();
 
 	/** Resumes the paused montage and resolves its stored normal attack trace. */
 	void ResolveTutorialDodgeAttack();

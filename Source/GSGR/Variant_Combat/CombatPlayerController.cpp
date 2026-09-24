@@ -17,6 +17,7 @@
 #include "GSGR.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "InputKeyEventArgs.h"
+#include "InputCoreTypes.h"
 
 void ACombatPlayerController::BeginPlay()
 {
@@ -80,6 +81,36 @@ void ACombatPlayerController::OnPossess(APawn* InPawn)
 
 bool ACombatPlayerController::InputKey(const FInputKeyEventArgs& Params)
 {
+	if (Params.Event == IE_Pressed)
+	{
+		if (ACombatGameMode* Mode = GetWorld()->GetAuthGameMode<ACombatGameMode>())
+		{
+			if (Mode->IsEvadeReminderOpen()
+				&& (Params.Key == EKeys::Escape || Params.Key == EKeys::Gamepad_FaceButton_Top))
+			{
+				Mode->RequestCloseEvadeReminder();
+				return true;
+			}
+			if (Mode->IsFullFlowDemo() && !Mode->IsEvadeReminderOpen())
+			{
+				if (Params.Key == EKeys::Period || Params.Key == EKeys::Gamepad_DPad_Right)
+				{
+					Mode->HandleDemoSkip();
+					return true;
+				}
+				if (Params.Key == EKeys::One || Params.Key == EKeys::Gamepad_DPad_Up)
+				{
+					Mode->JumpToShowcase();
+					return true;
+				}
+				if (Params.Key == EKeys::Two || Params.Key == EKeys::Gamepad_DPad_Down)
+				{
+					Mode->JumpToPostShowcase();
+					return true;
+				}
+			}
+		}
+	}
 	const bool bHandledByGameplay = Super::InputKey(Params);
 	if (!bAwaitingWelcomeInput)
 	{
@@ -158,6 +189,47 @@ void ACombatPlayerController::HideRunFlowUI()
 	EnsureRunFlowWidget();
 	RunFlowWidget->HideOverlay();
 	SetMenuInputMode(false);
+}
+
+void ACombatPlayerController::ShowShowcase()
+{
+	EnsureRunFlowWidget();
+	RunFlowWidget->ShowShowcase();
+	SetMenuInputMode(true);
+	if (UButton* ReturnButton = RunFlowWidget->GetReturnButton()) ReturnButton->SetUserFocus(this);
+}
+
+void ACombatPlayerController::ShowEvadeReminder()
+{
+	EnsureRunFlowWidget();
+	RunFlowWidget->ShowEvadeReminder();
+	SetMenuInputMode(true);
+}
+
+void ACombatPlayerController::BeginHideEvadeReminder()
+{
+	if (RunFlowWidget) RunFlowWidget->BeginHideEvadeReminder();
+}
+
+void ACombatPlayerController::HideEvadeReminder()
+{
+	if (RunFlowWidget) RunFlowWidget->HideEvadeReminder();
+	SetMenuInputMode(false);
+}
+
+void ACombatPlayerController::HandleReminderAnimationFinished()
+{
+	if (ACombatGameMode* Mode = GetWorld()->GetAuthGameMode<ACombatGameMode>()) Mode->CloseEvadeReminder();
+}
+
+void ACombatPlayerController::HandleShowcaseReturnSelected()
+{
+	if (ACombatGameMode* Mode = GetWorld()->GetAuthGameMode<ACombatGameMode>()) Mode->HandleShowcaseReturn();
+}
+
+void ACombatPlayerController::HandleReminderCloseSelected()
+{
+	if (ACombatGameMode* Mode = GetWorld()->GetAuthGameMode<ACombatGameMode>()) Mode->RequestCloseEvadeReminder();
 }
 
 void ACombatPlayerController::SetAwaitingWelcomeInput(bool bAwaiting)

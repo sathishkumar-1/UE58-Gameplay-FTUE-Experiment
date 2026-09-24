@@ -76,6 +76,13 @@ public:
 	void ShowTutorialComplete();
 	void ShowGameOver(float FinalSurvivalTime);
 	void HideRunFlowUI();
+	void ShowShowcase();
+	void ShowEvadeReminder();
+	void BeginHideEvadeReminder();
+	void HideEvadeReminder();
+	void HandleReminderAnimationFinished();
+	void HandleShowcaseReturnSelected();
+	void HandleReminderCloseSelected();
 	void SetAwaitingWelcomeInput(bool bAwaiting);
 	FText GetBindingDisplayText(const UInputAction* Action) const;
 

@@ -88,7 +88,8 @@ None or its chance to zero to disable this variant on an individual spawner.
 - `AI/CombatEnemy.h`: flurry settings and visible state.
 - `AI/CombatEnemyFlurry.cpp`: phase transitions and animation playback.
 - `AI/CombatEnemy.cpp`: attack selection, combo chaining, and damage rules.
-- `BP_FlurryEnemy.ArenaAttackRange` is 200 cm. Its AI measures this from the
+- `BP_FlurryEnemy.FlurryArenaAttackRange` defaults to 200 cm and can be tuned
+  independently of the basic enemy's `ArenaAttackRange`. Its AI measures this from the
   stationary player's anchor, so Space's temporary back dodge cannot pull the
   enemy into the player's return position. The basic enemy retains its range.
 

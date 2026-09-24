@@ -89,6 +89,13 @@ public:
 	/** Allows the run flow to immediately apply FTUE restrictions before the new enemy ticks. */
 	UPROPERTY(BlueprintAssignable, Category="Events")
 	FOnCombatEnemySpawned OnEnemySpawned;
+
+	/** Full Flow owns the spawn schedule, while reusing this spawner's classes and transform. */
+	void SetDemoManaged(bool bManaged);
+	ACombatEnemy* SpawnDemoEnemy(bool bFlurry);
+	void ClearDemoEnemy();
+	bool IsImmediateSpawner() const { return bShouldSpawnEnemiesImmediately; }
+	bool HasDemoClasses() const { return EnemyClass && FlurryEnemyClass; }
 	
 	/** Constructor */
 	ACombatEnemySpawner();
@@ -140,4 +147,7 @@ public:
 
 	/** Returns the currently living enemy, if one has spawned. */
 	ACombatEnemy* GetActiveEnemy() const { return ActiveEnemy.Get(); }
+
+private:
+	bool bDemoManaged = false;
 };

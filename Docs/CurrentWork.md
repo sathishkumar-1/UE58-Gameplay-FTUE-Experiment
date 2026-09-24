@@ -1,6 +1,73 @@
 ﻿# Current work / restart handoff
 
-Updated: 2026-09-23, after the character asset and combat changes were pushed.
+Updated: 2026-09-25, full route and reminder checked; independent flurry arena range compiled and tested in floating PIE.
+
+## 2026-09-25 separate flurry arena range
+
+- Added `FlurryArenaAttackRange` under **Flurry Enemy | Arena**, defaulting to 200 cm. Basic enemies continue to use `ArenaAttackRange`. The flurry range applies to the arena approach/re-approach checks and tutorial approach.
+- The user ran Live Coding successfully after a corrected UPROPERTY metadata placement. In floating PIE, the post-showcase flurry enemy reported 200 cm and stood at X=1596.65 versus player X=1400 (196.65 cm apart); its windup and burst ran. A basic tutorial enemy reported `ArenaAttackRange=120` and stood at X=1519.77 (119.77 cm apart). PIE was stopped.
+
+## 2026-09-25 flurry reminder image
+
+- Captured the flurry attack with the current character art and imported it as `/Game/Variant_Combat/UI/T_FlurryReminder`. The reimport source is `Art/UI/ReminderFlurrySource.png`.
+- `CombatRunWidget` now shows a cropped, gold-framed image between the Evade heading and instructions. The user ran Live Coding successfully. A floating PIE capture at `Saved/Screenshots/ReminderScreenshotTest.png` shows the image and X button fitting inside the reminder; `ReminderAfterTimeout.png` confirms automatic dismissal resumed gameplay. PIE was stopped afterward.
+
+## 2026-09-25 crash follow-up and route playtest
+
+- The latest crash report records an access violation in `UCombatLifeBar::SetLifePercentage`, called by `ACombatCharacter::ResetHP` from `StartPostShowcaseFlurry` during `Level_Full_Flow?FromShowcase=1` startup. This is a player-widget initialization order bug, not an out-of-memory report.
+- `ResetHP` now tolerates the life bar widget not yet existing; showcase return schedules `StartPostShowcaseFlurry` for the next tick. The user ran Live Coding successfully. PIE reached the showcase and returned to the post-showcase flurry and Evade reminder without crashing. Evidence: `Saved/Crashes/UECC-Windows-9E3EBE1F49237ECA3218C5B68DF6EA48_0000`, `Saved/Logs/GSGR.log`, and ignored `Saved/Screenshots/FullFlow_*.png`.
+- The menu Play click, Welcome-to-Light progression, all five individual skip stages, showcase Return, and post-return reminder were exercised with `Saved/EvadePlaytest.ps1`. The basic encounter spawned and damaged the player.
+- Light and Heavy attack clicks initially failed because the tutorial enemy was 350 cm away, outside the player's melee sweep. The lesson target offset is now 160 cm. A second user Live Coding compile succeeded; replay showed a real Light hit reducing enemy HP 3 to 2 and advancing to Heavy, a Heavy hit advancing to Dodge, a timed Space dodge advancing to Evade, and a held F through a real flurry hit completing Evade with player HP 5/5.
+- A missed Dodge displayed Try Again and replayed with full player HP. Repeated missed Evade attempts respawned fresh flurry enemies (observed instance 14) with full player HP; holding F subsequently completed that lesson.
+- Direct `1` jumped from the tutorial to the showcase. Direct `2` jumped to post-showcase flurry and reset player HP from 2/5 to 5/5. The post-showcase flurry counter killed that enemy, then the mixed loop spawned a basic enemy. Three light clicks killed it, and a flurry enemy spawned next; a second counter killed it and another flurry spawned. Only one enemy was observed active at a time.
+- The reminder appeared with full player HP. Its automatic timeout and X-button dismissal resumed gameplay. Esc sent immediately on reminder appearance stopped floating PIE via Unreal Editor's built-in Escape shortcut; in-game Esc dismissal could not be verified in PIE. Gamepad Y and packaged gameplay remain untested. The survival timer is reset in code; its exact reset value was not exposed by the editor property tool during replay.
+- All PIE sessions were stopped and injected keys released. No subsequent crash was observed. `Saved/EvadePlaytest.ps1` gained ignored local `ReminderEsc` and `ReminderX` actions for timing-sensitive checks; it is not shipping code.
+
+## Active checkpoint: Full Flow demo (2026-09-25)
+
+### Post-build validation (2026-09-25)
+
+- User closed the editor, fixed two compile errors, completed a normal solution/editor build, and reopened it. `ResetHP` is now public in `CombatCharacter.h`; the `TakeDamage` cast is mutable so `HandleTutorialPlayerHit` accepts it.
+- In the reopened editor, `BP_CombatGameMode`, `BP_CombatCharacter`, `BP_CombatEnemy`, and `BP_FlurryEnemy` compiled with warnings treated as errors.
+- Floating PIE on `Level_Main_Menu` rendered the GSGR Play menu. Direct PIE on `Level_Full_Flow` rendered Welcome, exposed `FTUEState=Welcome`, and logged `FTUE Started integration hook fired`. Direct PIE on `Level_Control_Recap_Showcase` rendered the control recap and Return button. The current editor map is back to `Level_Main_Menu`; PIE is stopped.
+- At this earlier checkpoint the Windows UI bridge returned no application windows, so input-driven routes were not yet exercised. The later validation above used `Saved/EvadePlaytest.ps1`; the user subsequently authorized and ran Live Coding for the two fixes.
+- Follow-up review on 2026-09-25 confirmed both user compile fixes in source. The Computer Use native pipe was unavailable after its prescribed retry and reset; Unreal MCP still reported PIE stopped. No input-driven route result can be claimed from this follow-up. The route code was reviewed without further C++ edits, so the next action remains the full input-driven PIE run above.
+- The PIE startup log showed no new project gameplay load errors. Existing editor/plugin warnings and tool-call warnings remain in `Saved/Logs/GSGR_2.log`.
+
+The user requested a playable, replayable route: main menu -> `Level_Full_Flow`
+Welcome/Light/Heavy/Dodge/Evade -> one basic enemy ->
+`Level_Control_Recap_Showcase` -> Return -> one flurry enemy with a one-time
+Evade reminder -> one-at-a-time random basic/flurry spawns. The route must
+replay on every Play regardless of the saved FTUE flag. `FTUE.Reset` remains
+the sole profile reset command. The user explicitly prohibited the assistant
+from starting C++ Live Coding and asked to report compile results before PIE
+verification.
+
+Implemented in the working tree, **not committed or pushed**:
+
+- New map assets `Level_Main_Menu`, `Level_Full_Flow`, and
+  `Level_Control_Recap_Showcase` under `Content/Variant_Combat`, duplicated
+  through Unreal so each has independent external actors. The menu and
+  showcase copies have their combat interactables/spawners removed; the full
+  flow copy retains the arena and three spawners. `Lvl_Combat` was not edited.
+- `Config/DefaultEngine.ini` now starts in `Level_Main_Menu`. All three maps
+  retain the `BP_CombatGameMode` World Settings override. The active editor map
+  is `Level_Main_Menu`.
+- Combat GameMode, enemy/spawner, character, controller, and code-built widget
+  now implement demo stages, lesson retries, direct jumps, per-event skip,
+  showcase departure/return hooks, full-health/timer reset, and the timed
+  left-side Evade reminder. Details and controls: `Docs/FullFlowDemo.md`.
+- Static checks: `git diff --check -- Source Config Docs` passed; editor map
+  inspection confirmed the full-flow spawner has both enemy classes and the
+  correct GameMode/PlayerStart. Menu/showcase gameplay actors were removed.
+- A normal C++ build, affected Blueprint compiles, and direct PIE startup checks
+  now pass as described above. The complete input-driven route remains to be
+  validated: five one-step skips, direct jumps, Dodge/Evade hit retries,
+  showcase return, X/Esc/gamepad Y/automatic reminder dismissal, and mixed spawning.
+- Preserve the user's already-modified `BP_FlurryEnemy.uasset` and unrelated
+  untracked imported content. Some new map packages are staged automatically
+  by Unreal; source/config/docs are still unstaged. Do not mistake this for a
+  completed commit.
 
 ## Current checkpoint (2026-09-23)
 

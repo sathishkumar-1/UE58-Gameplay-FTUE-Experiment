@@ -10,6 +10,7 @@ class UBackgroundBlur;
 class UBorder;
 class UButton;
 class UTextBlock;
+class UTexture2D;
 
 /** Compact, code-built overlay shared by startup, FTUE messaging, and game over. */
 UCLASS()
@@ -19,11 +20,18 @@ class UCombatRunWidget : public UUserWidget
 
 public:
 
+	UCombatRunWidget(const FObjectInitializer& ObjectInitializer);
+
 	void ShowStartupMenu();
 	void ShowTutorialMessage(const FText& Heading, const FText& Message);
 	void ShowTutorialComplete();
 	void ShowGameOver(float FinalSurvivalTime);
 	void HideOverlay();
+	void ShowShowcase();
+	void ShowEvadeReminder();
+	void BeginHideEvadeReminder();
+	void HideEvadeReminder();
+	UButton* GetReturnButton() const { return ReturnButton; }
 	UButton* GetPlayButton() const { return PlayButton; }
 
 protected:
@@ -39,6 +47,10 @@ protected:
 
 	UFUNCTION()
 	void HandleQuitClicked();
+	UFUNCTION()
+	void HandleReturnClicked();
+	UFUNCTION()
+	void HandleReminderCloseClicked();
 
 private:
 
@@ -74,4 +86,15 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> QuitButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> ReturnButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> ReminderPanel;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> ReminderCloseButton;
+	UPROPERTY()
+	TObjectPtr<UTexture2D> ReminderTexture;
+	bool bReminderVisible = false;
+	bool bReminderClosing = false;
+	double ReminderAnimationStart = 0.0;
 };

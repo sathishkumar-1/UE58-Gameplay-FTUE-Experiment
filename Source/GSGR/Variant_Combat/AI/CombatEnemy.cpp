@@ -13,6 +13,7 @@
 #include "Animation/AnimInstance.h"
 #include "Kismet/GameplayStatics.h"
 #include "CombatCharacter.h"
+#include "CombatGameMode.h"
 #include "Animation/AnimSequence.h"
 #include "UObject/ConstructorHelpers.h"
 
@@ -62,6 +63,11 @@ void ACombatEnemy::Tick(float DeltaSeconds)
 
 	if (bTutorialControlled)
 	{
+		if (bTutorialFlurryActive && FlurryState != ECombatFlurryState::None)
+		{
+			TickFlurry();
+			return;
+		}
 		TickTutorialControl();
 		return;
 	}
@@ -86,6 +92,7 @@ void ACombatEnemy::Tick(float DeltaSeconds)
 		? Player->GetStationaryCombatAnchorLocation() : Player->GetActorLocation();
 	const float DeltaX = PlayerTarget.X - GetActorLocation().X;
 	const float DistanceToPlayer = FMath::Abs(DeltaX);
+	const float AttackRange = GetArenaAttackRange();
 	const float FacingYaw = DeltaX >= 0.0f ? 0.0f : 180.0f;
 	SetActorRotation(FRotator(0.0f, FacingYaw, 0.0f));
 
@@ -99,7 +106,7 @@ void ACombatEnemy::Tick(float DeltaSeconds)
 	switch (ArenaState)
 	{
 	case EStationaryArenaState::Approach:
-		if (DistanceToPlayer > ArenaAttackRange)
+		if (DistanceToPlayer > AttackRange)
 		{
 			AddMovementInput(FVector(DeltaX >= 0.0f ? 1.0f : -1.0f, 0.0f, 0.0f));
 			return;
@@ -116,7 +123,7 @@ void ACombatEnemy::Tick(float DeltaSeconds)
 
 		// If the player created meaningful space, visibly recommit to approaching
 		// instead of attacking empty air with perfect responsiveness.
-		if (DistanceToPlayer > ArenaAttackRange * 1.25f)
+		if (DistanceToPlayer > AttackRange * 1.25f)
 		{
 			ArenaState = EStationaryArenaState::Approach;
 			return;
@@ -325,7 +332,9 @@ void ACombatEnemy::DoAttackTrace(FName DamageSourceBone)
 				{
 					// The FTUE has already accepted the player's dodge at this point. Keep
 					// the real sweep and montage timing, but never damage its staged target.
-					if (bResolvingTutorialDodgeAttack && HitActor == TutorialTarget.Get())
+					const ACombatGameMode* RunMode = GetWorld()->GetAuthGameMode<ACombatGameMode>();
+					if (bResolvingTutorialDodgeAttack && HitActor == TutorialTarget.Get()
+						&& (!RunMode || !RunMode->IsFullFlowDemo()))
 					{
 						continue;
 					}
@@ -602,6 +611,8 @@ void ACombatEnemy::SetTutorialControlled(bool bControlled)
 	}
 
 	bTutorialControlled = bControlled;
+	bTutorialFlurryRequested = false;
+	bTutorialFlurryActive = false;
 	bTutorialAttackRequested = false;
 	bTutorialDodgeWindowConsumed = !bControlled;
 	TutorialDamageSourceBone = NAME_None;
@@ -637,6 +648,27 @@ void ACombatEnemy::StartTutorialDodgeAttack(ACombatCharacter* TargetPlayer)
 	TutorialDamageSourceBone = NAME_None;
 }
 
+void ACombatEnemy::StartTutorialFlurry(ACombatCharacter* TargetPlayer)
+{
+	if (!bTutorialControlled || !bFlurryEnemy || !IsAlive() || !IsValid(TargetPlayer)) return;
+	CancelAttacks();
+	TutorialTarget = TargetPlayer;
+	bTutorialAttackRequested = false;
+	bTutorialDodgeWindowConsumed = false;
+	bTutorialFlurryRequested = true;
+}
+
+void ACombatEnemy::AbortTutorialAction()
+{
+	bTutorialAttackRequested = false;
+	bTutorialDodgeWindowConsumed = true;
+	bTutorialFlurryRequested = false;
+	bTutorialFlurryActive = false;
+	SetTutorialAttackFrozen(false);
+	ResetFlurry();
+	CancelAttacks();
+}
+
 void ACombatEnemy::ResolveTutorialDodgeAttack()
 {
 	if (!bTutorialControlled || !bTutorialAttackRequested || !bTutorialDodgeWindowConsumed)
@@ -659,9 +691,9 @@ void ACombatEnemy::ResolveTutorialDodgeAttack()
 
 void ACombatEnemy::TickTutorialControl()
 {
-	GetCharacterMovement()->StopMovementImmediately();
 	if (!IsAlive() || bTutorialAttackFrozen || bIsAttacking)
 	{
+		GetCharacterMovement()->StopMovementImmediately();
 		return;
 	}
 
@@ -680,9 +712,17 @@ void ACombatEnemy::TickTutorialControl()
 	const float DistanceToPlayer = FMath::Abs(DeltaX);
 	SetActorRotation(FRotator(0.0f, DeltaX >= 0.0f ? 0.0f : 180.0f, 0.0f));
 
-	if (DistanceToPlayer > ArenaAttackRange)
+	if (DistanceToPlayer > GetArenaAttackRange())
 	{
 		AddMovementInput(FVector(DeltaX >= 0.0f ? 1.0f : -1.0f, 0.0f, 0.0f));
+		return;
+	}
+	GetCharacterMovement()->StopMovementImmediately();
+	if (bTutorialFlurryRequested)
+	{
+		bTutorialFlurryRequested = false;
+		BeginFlurryWindup();
+		bTutorialFlurryActive = FlurryState != ECombatFlurryState::None;
 		return;
 	}
 
