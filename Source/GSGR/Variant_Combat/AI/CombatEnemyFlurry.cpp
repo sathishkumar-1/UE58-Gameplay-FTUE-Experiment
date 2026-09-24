@@ -115,6 +115,24 @@ void ACombatEnemy::TickFlurry()
 		}
 		break;
 	case ECombatFlurryState::Exhausted:
+		if (ExhaustedMontage && ExhaustedAnimation)
+		{
+			if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
+			{
+				const float ClipLength = ExhaustedAnimation->GetPlayLength();
+				if (ClipLength > SMALL_NUMBER)
+				{
+					const float WindowLength = FMath::Clamp(ExhaustedDuration, 0.5f, 1.0f);
+					const float Elapsed = FMath::Max(0.0f, Now - (FlurryStateEndTime - WindowLength));
+					const float CyclePosition = FMath::Fmod(Elapsed, 2.0f * ClipLength);
+					const float ClipPosition = CyclePosition <= ClipLength
+						? CyclePosition : 2.0f * ClipLength - CyclePosition;
+					Anim->Montage_SetPosition(ExhaustedMontage, FMath::Min(ClipPosition, ClipLength - SMALL_NUMBER));
+					UE_LOG(LogGSGR, VeryVerbose, TEXT("Flurry exhausted pose: %.3f s (%s)"),
+						ClipPosition, CyclePosition <= ClipLength ? TEXT("forward") : TEXT("reverse"));
+				}
+			}
+		}
 		if (Now >= FlurryStateEndTime)
 		{
 			FlurryState = ECombatFlurryState::Recovering;
@@ -148,10 +166,9 @@ void ACombatEnemy::FinishFlurry()
 	{
 		if (ExhaustedAnimation && ComboAttackMontage && !ComboAttackMontage->SlotAnimTracks.IsEmpty())
 		{
-			// Reuse the mannequin's heavy recoil as the prototype tired/slumped motion.
 			ExhaustedMontage = Anim->PlaySlotAnimationAsDynamicMontage(ExhaustedAnimation,
-				ComboAttackMontage->SlotAnimTracks[0].SlotName, 0.08f, 0.15f,
-				ExhaustedAnimation->GetPlayLength() / FMath::Clamp(ExhaustedDuration, 0.5f, 1.0f));
+				ComboAttackMontage->SlotAnimTracks[0].SlotName, 0.08f, 0.15f, 1.0f);
+			if (ExhaustedMontage) Anim->Montage_Pause(ExhaustedMontage);
 		}
 	}
 	UE_LOG(LogGSGR, Display, TEXT("Flurry enemy: exhausted (one-hit counter window)"));
