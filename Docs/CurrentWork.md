@@ -7,6 +7,7 @@ Updated: 2026-09-25, FTUE Evade windup and death animation work validated in PIE
 - User requested committing and pushing all current changes on `main`, including the FTUE windup and death-animation implementation, documentation, pre-existing Blueprint and `.codex/config.toml` edits, and four imported content folders.
 - The imported folders contain 1,275 `.uasset` and 20 `.umap` files (about 2.7 GiB total). Both extensions are configured for Git LFS in `.gitattributes`. The config edit only adds approval mode for the local Unreal MCP tool listing.
 - The normal editor build, four affected Blueprint compiles, and PIE checks are recorded below. Physical gamepad and packaged play remain untested. The intended commit includes this handoff; push and commit identity are reported in the publication response.
+- After the first publication commit `e050f7f` was pushed, the still-open editor wrote `BP_CombatCharacter.uasset` and `BP_CombatGameMode.uasset` at 03:56 and 03:55. These two LFS changes are included in a follow-up commit so the requested complete working tree is published.
 
 ## Active checkpoint: FTUE Evade windup and death animation (2026-09-25)
 
