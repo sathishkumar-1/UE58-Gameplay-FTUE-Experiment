@@ -155,6 +155,7 @@ void ACombatGameMode::InitializeRunFlow()
 	CombatPlayer->OnPlayerDied.AddUniqueDynamic(this, &ACombatGameMode::HandlePlayerDied);
 	CombatPlayer->OnDodgeStarted.AddUniqueDynamic(this, &ACombatGameMode::HandlePlayerDodgeStarted);
 	LoadFTUEProfile();
+	CombatPlayerController->SetDemoShortcutsActive(bFullFlowDemo);
 	if (bShowcaseLevel)
 	{
 		FullFlowStage = EFullFlowStage::Showcase;
@@ -171,7 +172,14 @@ void ACombatGameMode::InitializeRunFlow()
 			// Let the newly loaded player's BeginPlay create its widget before resetting HP.
 			GetWorldTimerManager().SetTimerForNextTick(this, &ACombatGameMode::StartPostShowcaseFlurry);
 		}
-		else BeginFTUE();
+		else
+		{
+			BeginFTUE();
+			if (UGameplayStatics::HasOption(OptionsString, TEXT("StartAtShowcase")))
+				GetWorldTimerManager().SetTimerForNextTick(this, &ACombatGameMode::JumpToShowcase);
+			else if (UGameplayStatics::HasOption(OptionsString, TEXT("StartAtFlurry")))
+				GetWorldTimerManager().SetTimerForNextTick(this, &ACombatGameMode::JumpToPostShowcase);
+		}
 		return;
 	}
 
@@ -221,6 +229,20 @@ void ACombatGameMode::HandlePlaySelected()
 	{
 		StartNormalGameplay();
 	}
+}
+
+void ACombatGameMode::HandleMenuShowcaseSelected()
+{
+	if (!bMainMenuLevel) return;
+	UGameplayStatics::SetGamePaused(this, false);
+	UGameplayStatics::OpenLevel(this, TEXT("Level_Full_Flow"), true, TEXT("StartAtShowcase=1"));
+}
+
+void ACombatGameMode::HandleMenuPostShowcaseSelected()
+{
+	if (!bMainMenuLevel) return;
+	UGameplayStatics::SetGamePaused(this, false);
+	UGameplayStatics::OpenLevel(this, TEXT("Level_Full_Flow"), true, TEXT("StartAtFlurry=1"));
 }
 
 void ACombatGameMode::BeginFTUE()
@@ -967,6 +989,7 @@ void ACombatGameMode::ShowEvadeReminder()
 	if (bReminderShown || !CombatPlayerController) return;
 	bReminderShown = true;
 	bReminderOpen = true;
+	CombatPlayerController->SetReminderInputActive(true);
 	UGameplayStatics::SetGamePaused(this, true);
 	CombatPlayerController->ShowEvadeReminder();
 	ReminderTickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this,
@@ -994,6 +1017,7 @@ void ACombatGameMode::CloseEvadeReminder()
 {
 	if (!bReminderOpen) return;
 	bReminderOpen = false;
+	if (CombatPlayerController) CombatPlayerController->SetReminderInputActive(false);
 	if (ReminderTickerHandle.IsValid())
 	{
 		FTSTicker::GetCoreTicker().RemoveTicker(ReminderTickerHandle);

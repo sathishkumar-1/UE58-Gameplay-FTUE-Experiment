@@ -4,7 +4,9 @@
 #include "Variant_Combat/CombatPlayerController.h"
 #include "Variant_Combat/CombatGameMode.h"
 #include "Variant_Combat/UI/CombatRunWidget.h"
+#include "Variant_Combat/UI/CombatMainMenuWidget.h"
 #include "EnhancedInputSubsystems.h"
+#include "EnhancedInputComponent.h"
 #include "InputAction.h"
 #include "InputMappingContext.h"
 #include "Kismet/GameplayStatics.h"
@@ -25,9 +27,29 @@ void ACombatPlayerController::BeginPlay()
 	EnsureRunFlowWidget();
 }
 
+void ACombatPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (IsLocalPlayerController())
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+		{
+			if (DemoShortcutsMappingContext) Subsystem->RemoveMappingContext(DemoShortcutsMappingContext);
+			if (DemoReminderMappingContext) Subsystem->RemoveMappingContext(DemoReminderMappingContext);
+		}
+	}
+	Super::EndPlay(EndPlayReason);
+}
+
 void ACombatPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
+	if (UEnhancedInputComponent* EnhancedInput = Cast<UEnhancedInputComponent>(InputComponent))
+	{
+		if (DemoSkipAction) EnhancedInput->BindAction(DemoSkipAction, ETriggerEvent::Started, this, &ACombatPlayerController::HandleDemoSkipAction);
+		if (DemoShowcaseAction) EnhancedInput->BindAction(DemoShowcaseAction, ETriggerEvent::Started, this, &ACombatPlayerController::HandleDemoShowcaseAction);
+		if (DemoPostShowcaseAction) EnhancedInput->BindAction(DemoPostShowcaseAction, ETriggerEvent::Started, this, &ACombatPlayerController::HandleDemoPostShowcaseAction);
+		if (DismissReminderAction) EnhancedInput->BindAction(DismissReminderAction, ETriggerEvent::Started, this, &ACombatPlayerController::HandleDismissReminderAction);
+	}
 
 	// only add IMCs for local player controllers
 	if (IsLocalPlayerController())
@@ -81,36 +103,6 @@ void ACombatPlayerController::OnPossess(APawn* InPawn)
 
 bool ACombatPlayerController::InputKey(const FInputKeyEventArgs& Params)
 {
-	if (Params.Event == IE_Pressed)
-	{
-		if (ACombatGameMode* Mode = GetWorld()->GetAuthGameMode<ACombatGameMode>())
-		{
-			if (Mode->IsEvadeReminderOpen()
-				&& (Params.Key == EKeys::Escape || Params.Key == EKeys::Gamepad_FaceButton_Top))
-			{
-				Mode->RequestCloseEvadeReminder();
-				return true;
-			}
-			if (Mode->IsFullFlowDemo() && !Mode->IsEvadeReminderOpen())
-			{
-				if (Params.Key == EKeys::Period || Params.Key == EKeys::Gamepad_DPad_Right)
-				{
-					Mode->HandleDemoSkip();
-					return true;
-				}
-				if (Params.Key == EKeys::One || Params.Key == EKeys::Gamepad_DPad_Up)
-				{
-					Mode->JumpToShowcase();
-					return true;
-				}
-				if (Params.Key == EKeys::Two || Params.Key == EKeys::Gamepad_DPad_Down)
-				{
-					Mode->JumpToPostShowcase();
-					return true;
-				}
-			}
-		}
-	}
 	const bool bHandledByGameplay = Super::InputKey(Params);
 	if (!bAwaitingWelcomeInput)
 	{
@@ -146,6 +138,57 @@ bool ACombatPlayerController::InputKey(const FInputKeyEventArgs& Params)
 	return bHandledByGameplay;
 }
 
+void ACombatPlayerController::SetDemoShortcutsActive(bool bActive)
+{
+	bDemoShortcutsActive = bActive;
+	if (!IsLocalPlayerController()) return;
+	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+	{
+		if (DemoShortcutsMappingContext)
+		{
+			Subsystem->RemoveMappingContext(DemoShortcutsMappingContext);
+			if (bActive && !bReminderInputActive) Subsystem->AddMappingContext(DemoShortcutsMappingContext, 10);
+		}
+	}
+}
+
+void ACombatPlayerController::SetReminderInputActive(bool bActive)
+{
+	bReminderInputActive = bActive;
+	if (!IsLocalPlayerController()) return;
+	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+	{
+		if (DemoShortcutsMappingContext) Subsystem->RemoveMappingContext(DemoShortcutsMappingContext);
+		if (DemoReminderMappingContext)
+		{
+			Subsystem->RemoveMappingContext(DemoReminderMappingContext);
+			if (bActive) Subsystem->AddMappingContext(DemoReminderMappingContext, 20);
+		}
+		if (!bActive && bDemoShortcutsActive && DemoShortcutsMappingContext)
+			Subsystem->AddMappingContext(DemoShortcutsMappingContext, 10);
+	}
+}
+
+void ACombatPlayerController::HandleDemoSkipAction()
+{
+	if (ACombatGameMode* Mode = GetWorld()->GetAuthGameMode<ACombatGameMode>()) Mode->HandleDemoSkip();
+}
+
+void ACombatPlayerController::HandleDemoShowcaseAction()
+{
+	if (ACombatGameMode* Mode = GetWorld()->GetAuthGameMode<ACombatGameMode>()) Mode->JumpToShowcase();
+}
+
+void ACombatPlayerController::HandleDemoPostShowcaseAction()
+{
+	if (ACombatGameMode* Mode = GetWorld()->GetAuthGameMode<ACombatGameMode>()) Mode->JumpToPostShowcase();
+}
+
+void ACombatPlayerController::HandleDismissReminderAction()
+{
+	if (ACombatGameMode* Mode = GetWorld()->GetAuthGameMode<ACombatGameMode>()) Mode->RequestCloseEvadeReminder();
+}
+
 void ACombatPlayerController::SetRespawnTransform(const FTransform& NewRespawn)
 {
 	// save the new respawn transform
@@ -154,10 +197,11 @@ void ACombatPlayerController::SetRespawnTransform(const FTransform& NewRespawn)
 
 void ACombatPlayerController::ShowStartupMenu()
 {
-	EnsureRunFlowWidget();
-	RunFlowWidget->ShowStartupMenu();
+	EnsureMainMenuWidget();
+	if (!MainMenuWidget) return;
+	MainMenuWidget->SetVisibility(ESlateVisibility::Visible);
 	SetMenuInputMode(true);
-	if (UButton* PlayButton = RunFlowWidget->GetPlayButton())
+	if (UButton* PlayButton = MainMenuWidget->GetPlayButton())
 	{
 		PlayButton->SetUserFocus(this);
 	}
@@ -297,6 +341,16 @@ void ACombatPlayerController::HandlePlaySelected()
 	}
 }
 
+void ACombatPlayerController::LaunchShowcaseFromMenu()
+{
+	if (ACombatGameMode* Mode = GetWorld()->GetAuthGameMode<ACombatGameMode>()) Mode->HandleMenuShowcaseSelected();
+}
+
+void ACombatPlayerController::LaunchPostShowcaseFromMenu()
+{
+	if (ACombatGameMode* Mode = GetWorld()->GetAuthGameMode<ACombatGameMode>()) Mode->HandleMenuPostShowcaseSelected();
+}
+
 void ACombatPlayerController::HandleRestartSelected()
 {
 	if (ACombatGameMode* CombatGameMode = GetWorld()->GetAuthGameMode<ACombatGameMode>())
@@ -343,13 +397,27 @@ void ACombatPlayerController::EnsureRunFlowWidget()
 	}
 }
 
+void ACombatPlayerController::EnsureMainMenuWidget()
+{
+	if (MainMenuWidget || !IsLocalPlayerController()) return;
+	if (!MainMenuWidgetClass)
+	{
+		UE_LOG(LogGSGR, Error, TEXT("MainMenuWidgetClass is not set on the combat player controller."));
+		return;
+	}
+	MainMenuWidget = CreateWidget<UCombatMainMenuWidget>(this, MainMenuWidgetClass);
+	if (MainMenuWidget) MainMenuWidget->AddToPlayerScreen(200);
+}
+
 void ACombatPlayerController::SetMenuInputMode(bool bMenuActive)
 {
 	bShowMouseCursor = bMenuActive;
-	if (bMenuActive && RunFlowWidget)
+	if (bMenuActive && (MainMenuWidget || RunFlowWidget))
 	{
 		FInputModeGameAndUI InputMode;
-		InputMode.SetWidgetToFocus(RunFlowWidget->TakeWidget());
+		UUserWidget* FocusWidget = MainMenuWidget && MainMenuWidget->IsVisible()
+			? Cast<UUserWidget>(MainMenuWidget) : Cast<UUserWidget>(RunFlowWidget);
+		InputMode.SetWidgetToFocus(FocusWidget->TakeWidget());
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		SetInputMode(InputMode);
 	}

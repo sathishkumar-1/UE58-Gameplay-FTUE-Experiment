@@ -62,6 +62,8 @@ public:
 
 	/** UI/controller entry points. */
 	void HandlePlaySelected();
+	void HandleMenuShowcaseSelected();
+	void HandleMenuPostShowcaseSelected();
 	void HandleWelcomeContinue();
 	void HandleRestartSelected();
 	void HandleQuitSelected();

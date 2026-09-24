@@ -10,6 +10,7 @@ class UInputMappingContext;
 class UInputAction;
 class ACombatCharacter;
 class UCombatRunWidget;
+class UCombatMainMenuWidget;
 struct FInputKeyEventArgs;
 
 /**
@@ -31,6 +32,23 @@ protected:
 	/** Input Mapping Contexts */
 	UPROPERTY(EditAnywhere, Category="Input|Input Mappings")
 	TArray<UInputMappingContext*> MobileExcludedMappingContexts;
+
+	UPROPERTY(EditDefaultsOnly, Category="Input|Demo")
+	TObjectPtr<UInputMappingContext> DemoShortcutsMappingContext;
+	UPROPERTY(EditDefaultsOnly, Category="Input|Demo")
+	TObjectPtr<UInputMappingContext> DemoReminderMappingContext;
+	UPROPERTY(EditDefaultsOnly, Category="Input|Demo")
+	TObjectPtr<UInputAction> DemoSkipAction;
+	UPROPERTY(EditDefaultsOnly, Category="Input|Demo")
+	TObjectPtr<UInputAction> DemoShowcaseAction;
+	UPROPERTY(EditDefaultsOnly, Category="Input|Demo")
+	TObjectPtr<UInputAction> DemoPostShowcaseAction;
+	UPROPERTY(EditDefaultsOnly, Category="Input|Demo")
+	TObjectPtr<UInputAction> DismissReminderAction;
+
+	/** Editor-designed main menu; other run-flow screens use UCombatRunWidget. */
+	UPROPERTY(EditDefaultsOnly, Category="UI")
+	TSubclassOf<UCombatMainMenuWidget> MainMenuWidgetClass;
 
 	/** Mobile controls widget to spawn */
 	UPROPERTY(EditAnywhere, Category="Input|Touch Controls")
@@ -55,6 +73,7 @@ protected:
 
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	/** Initialize input bindings */
 	virtual void SetupInputComponent() override;
@@ -72,6 +91,8 @@ public:
 
 	/** Run-flow presentation used by the existing CombatGameMode. */
 	void ShowStartupMenu();
+	void SetDemoShortcutsActive(bool bActive);
+	void SetReminderInputActive(bool bActive);
 	void ShowTutorialMessage(const FText& Heading, const FText& Message);
 	void ShowTutorialComplete();
 	void ShowGameOver(float FinalSurvivalTime);
@@ -88,6 +109,11 @@ public:
 
 	/** Widget callbacks routed to the authoritative run flow. */
 	void HandlePlaySelected();
+	/** Ready for OnClicked events on future buttons in WBP_MainMenu. */
+	UFUNCTION(BlueprintCallable, Category="Full Flow|Menu")
+	void LaunchShowcaseFromMenu();
+	UFUNCTION(BlueprintCallable, Category="Full Flow|Menu")
+	void LaunchPostShowcaseFromMenu();
 	void HandleRestartSelected();
 	void HandleQuitSelected();
 
@@ -102,12 +128,21 @@ protected:
 
 	/** Lazily creates the shared startup/tutorial/game-over overlay. */
 	void EnsureRunFlowWidget();
+	void EnsureMainMenuWidget();
+	void HandleDemoSkipAction();
+	void HandleDemoShowcaseAction();
+	void HandleDemoPostShowcaseAction();
+	void HandleDismissReminderAction();
 
 	/** Switches between menu navigation and normal game input. */
 	void SetMenuInputMode(bool bMenuActive);
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCombatRunWidget> RunFlowWidget;
+	UPROPERTY(Transient)
+	TObjectPtr<UCombatMainMenuWidget> MainMenuWidget;
+	bool bDemoShortcutsActive = false;
+	bool bReminderInputActive = false;
 
 	bool bAwaitingWelcomeInput = false;
 	bool bWelcomeKeyPressed = false;
