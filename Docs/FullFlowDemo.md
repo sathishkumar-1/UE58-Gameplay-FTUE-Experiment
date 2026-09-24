@@ -174,6 +174,119 @@ Over or restarting a failed tutorial attempt.
 | `2` / gamepad D-pad Down | Jump to the post-showcase flurry encounter |
 | Esc / gamepad Y / reminder X | Dismiss the one-time Evade reminder |
 
+### Change keyboard, mouse, and gamepad controls
+
+For combat, open `Content/Variant_Combat/Input/IMC_Combat` in the Content
+Browser. Its **Mappings** list pairs each Input Action with keyboard, mouse,
+and gamepad keys. Change a key there, or add another mapping for the same
+action, then save the mapping context and test in PIE. `BP_CombatPlayerController`
+loads `IMC_Combat` from its **Default Mapping Contexts** class default.
+`BP_CombatCharacter` selects the Input Action assets in its **Class Defaults**;
+`ACombatCharacter::SetupPlayerInputComponent` binds those actions to gameplay.
+You normally change a key in the mapping context, without editing the action
+or C++ binding. For an analog stick, keep the action's axis type and inspect
+the mapping's Dead Zone, Scalar, Swizzle, and Negate modifiers before replacing
+its key.
+
+| Action in `IMC_Combat` | Current PC input | Current gamepad input | Input Action |
+| --- | --- | --- | --- |
+| Move | WASD or arrow keys | Left stick (`Gamepad Left 2D`) | `/Game/Input/Actions/IA_Move` |
+| Look | Mouse movement via `IMC_MouseLook` | Right stick (`Gamepad Right 2D`) | `/Game/Input/Actions/IA_Look` for stick; `/Game/Input/Actions/IA_MouseLook` for mouse |
+| Light attack | Left mouse button | Right shoulder | `/Game/Variant_Combat/Input/Actions/IA_ComboAttack` |
+| Heavy attack | Right mouse button | Right trigger axis | `/Game/Variant_Combat/Input/Actions/IA_ChargedAttack` |
+| Back dodge | Space | Face button Left | `/Game/Input/Actions/IA_Jump` |
+| Hold Evade | F | Left shoulder | `/Game/Variant_Combat/Input/Actions/IA_Evade` |
+| Toggle camera side | R | D-pad Down | `/Game/Variant_Combat/Input/Actions/IA_ToggleCameraSide` |
+
+`IMC_MouseLook` is in `BP_CombatPlayerController`'s **Mobile Excluded Mapping
+Contexts** and maps `Mouse 2D` to `IA_MouseLook`. The left and right sticks
+are already in `IMC_Combat`; console gamepads use those mappings when the
+controller supplies the corresponding Unreal gamepad keys. The D-pad Down
+camera mapping is consumed by the Full Flow direct-jump shortcut there; use a
+different camera key if you need both actions in that level.
+
+The demo-only shortcuts in the table above are **hard-coded key checks**, not
+entries in `IMC_Combat`. To change their PC or gamepad keys, edit
+`ACombatPlayerController::InputKey` in
+`Source/GSGR/Variant_Combat/CombatPlayerController.cpp`:
+
+| Demo action | Current `EKeys` checks |
+| --- | --- |
+| Skip one event | `Period`, `Gamepad_DPad_Right` |
+| Jump to showcase | `One`, `Gamepad_DPad_Up` |
+| Jump to post-showcase flurry | `Two`, `Gamepad_DPad_Down` |
+| Dismiss reminder | `Escape`, `Gamepad_FaceButton_Top` (Y/Triangle position) |
+
+The reminder X is a UI button in `UCombatRunWidget`, not a keyboard binding.
+Welcome accepts any deliberate digital keyboard/gamepad button after it is
+pressed and released. For an easier asset-only remapping workflow in the
+future, create Input Actions for these demo commands, map them in a context,
+and bind them in the controller; the current code does not do that. The
+on-screen Evade hint reads the active Input Action mappings, while some
+reminder text and this guide name specific keys and should be updated if you
+change them. After a C++ shortcut change, do a normal editor build and replay
+the menu and jump paths.
+
+### Optional main-menu buttons for direct destinations
+
+The current menu is built in `UCombatRunWidget::BuildWidgetTree` in
+`Source/GSGR/Variant_Combat/UI/CombatRunWidget.cpp`; it is not a separate Widget
+Blueprint. `NativeOnInitialized` binds button clicks, and `ShowStartupMenu`
+chooses which buttons are visible. The existing Play click calls
+`ACombatPlayerController::HandlePlaySelected`, then
+`ACombatGameMode::HandlePlaySelected`, which unpauses and opens
+`Level_Full_Flow`. For two new C++ buttons, follow that same widget ->
+controller -> GameMode path. If you replace the menu with a Widget Blueprint,
+its button `OnClicked` events can use **Set Game Paused** (false) and **Open
+Level (by Name)** with the same level and option strings below.
+
+Pass the selected destination through an `OpenLevel` **Options** string, for
+example `StartAtShowcase=1` or `StartAtFlurry=1`, while opening
+`Level_Full_Flow`. The two menu handlers can use these calls after unpausing:
+
+```cpp
+UGameplayStatics::OpenLevel(this, TEXT("Level_Full_Flow"), true, TEXT("StartAtShowcase=1"));
+UGameplayStatics::OpenLevel(this, TEXT("Level_Full_Flow"), true, TEXT("StartAtFlurry=1"));
+```
+
+Use one call per button. In the *new* `ACombatGameMode::InitializeRunFlow`, check
+`UGameplayStatics::HasOption(OptionsString, TEXT("StartAtShowcase"))` or
+`StartAtFlurry` in the `bFullFlowDemo` branch **before** its normal `BeginFTUE()`
+path. Schedule `JumpToShowcase()` or `JumpToPostShowcase()` for the next tick
+with `GetWorldTimerManager().SetTimerForNextTick`, then return from that branch.
+For example, after the existing `FromShowcase` case:
+
+```cpp
+if (UGameplayStatics::HasOption(OptionsString, TEXT("StartAtShowcase")))
+{
+    GetWorldTimerManager().SetTimerForNextTick(this, &ACombatGameMode::JumpToShowcase);
+    return;
+}
+if (UGameplayStatics::HasOption(OptionsString, TEXT("StartAtFlurry")))
+{
+    GetWorldTimerManager().SetTimerForNextTick(this, &ACombatGameMode::JumpToPostShowcase);
+    return;
+}
+BeginFTUE();
+```
+
+Those are the same destination methods called by `1`/D-pad Up and `2`/D-pad
+Down once Full Flow is running. Waiting a tick also lets the newly loaded
+player and widget initialize before the flurry route resets health. Keep the
+existing `FromShowcase=1` check ahead of the new start-option checks so the
+showcase Return path still fires `OnShowcaseReturned`.
+
+The menu's GameMode is a different instance from Full Flow's. Calling
+`JumpToShowcase()` or `JumpToPostShowcase()` on the menu instance has no effect
+because both require `bFullFlowDemo`. Sending a fake `1` or `2` key from the
+menu is therefore not a substitute for a travel option. Opening the showcase
+map directly would also bypass the Full Flow `OnShowcaseDeparted` callback.
+With the travel-option route, `JumpToShowcase()` fires that callback; the
+flurry shortcut stays in Full Flow and does not fire `OnShowcaseReturned`.
+Because the example handles the option before `BeginFTUE()`, it does not fire
+`OnFTUEStarted`. To match the literal in-level key press, first call
+`BeginFTUE()`, then schedule the jump for the next tick instead.
+
 The post-showcase flurry uses the existing random attack choice. Its first
 flurry windup pauses the world and shows a left-side reminder for up to three
 seconds of real time. The card shows a cropped screenshot of the flurry attack

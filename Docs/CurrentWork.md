@@ -2,6 +2,12 @@
 
 Updated: 2026-09-25, FTUE Evade windup and death animation work validated in PIE.
 
+## 2026-09-25 Full Flow documentation follow-up
+
+- User requested an input-remapping guide, confirmation of Blueprint/C++ integration-callback access, and instructions for possible future main-menu buttons that open Full Flow directly at the showcase or post-showcase flurry. No buttons or route code were requested.
+- `Docs/FullFlowDemo.md` already contained the four callback signatures, firing points, Blueprint binding order, and C++ `AddUniqueDynamic` example, so that section was retained. Added the actual Enhanced Input asset locations and PC/gamepad mappings, distinguished the C++ `InputKey` demo shortcuts from asset mappings, and described a travel-option route for optional menu buttons while preserving callback behavior.
+- Documentation-only change; verified against the current controller, GameMode, widget source and Blueprint defaults. No new gameplay build or PIE run is needed for the guide. This note and the guide are the files for the requested commit and push.
+
 ## 2026-09-25 publication checkpoint
 
 - User requested committing and pushing all current changes on `main`, including the FTUE windup and death-animation implementation, documentation, pre-existing Blueprint and `.codex/config.toml` edits, and four imported content folders.
