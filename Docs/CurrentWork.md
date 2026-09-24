@@ -1,6 +1,12 @@
 ﻿# Current work / restart handoff
 
-Updated: 2026-09-25, full route and reminder checked; independent flurry arena range compiled and tested in floating PIE.
+Updated: 2026-09-25, flurry range visibility validated after a normal editor rebuild.
+
+## 2026-09-25 crash review and range visibility follow-up
+
+- The latest three reports under `Saved/Crashes/UECC-Windows-DA5F7829477BF002056DDB8EF2534D56_*` came from one older editor session after several Live Coding patches. Unreal reported a delegate access-detector failure while destroying `ACombatEnemy` through generated code, followed by an access violation. All three reports record `MemoryStats.bIsOOM=0` and roughly 7 GB of available physical memory. The stack does not identify gameplay code to change; avoid treating this as a confirmed script defect or memory exhaustion.
+- A normal `GSGREditor Win64 Development` build completed successfully after that crash. In the restarted editor, `BP_CombatEnemy` and `BP_FlurryEnemy` both compiled with warnings treated as errors. Their defaults show basic `ArenaAttackRange=120`, flurry `FlurryArenaAttackRange=200`, and the expected enemy-type flags. Previous floating PIE checks measured their actual attack spacing and exercised the flurry attack.
+- Removed `EditConditionHides` from the two range properties so both remain visible for Blueprint tuning. Runtime selection still uses `bFlurryEnemy`. The separate untracked imported content folders and local `.codex/config.toml` change are outside this follow-up commit.
 
 ## 2026-09-25 separate flurry arena range
 

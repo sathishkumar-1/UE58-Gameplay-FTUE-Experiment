@@ -90,7 +90,7 @@ protected:
 	float FlurryChance = 0.5f;
 
 	/** Center-to-center distance at which a flurry enemy stops and begins its attack. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Flurry Enemy|Arena", meta=(EditCondition="bFlurryEnemy", EditConditionHides, ClampMin="0", Units="cm"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Flurry Enemy|Arena", meta=(ClampMin="0", Units="cm"))
 	float FlurryArenaAttackRange = 200.0f;
 
 	/** Prevent random selection from withholding the signature attack indefinitely. */
@@ -137,7 +137,7 @@ protected:
 	bool bUseStationaryArenaAI = true;
 
 	/** Center-to-center distance at which the enemy stops and starts attacking. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stationary Arena", meta=(EditCondition="!bFlurryEnemy", EditConditionHides, ClampMin="0", Units="cm"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stationary Arena", meta=(ClampMin="0", Units="cm"))
 	float ArenaAttackRange = 140.0f;
 
 	float GetArenaAttackRange() const { return bFlurryEnemy ? FlurryArenaAttackRange : ArenaAttackRange; }

@@ -92,6 +92,8 @@ None or its chance to zero to disable this variant on an individual spawner.
   independently of the basic enemy's `ArenaAttackRange`. Its AI measures this from the
   stationary player's anchor, so Space's temporary back dodge cannot pull the
   enemy into the player's return position. The basic enemy retains its range.
+  Both range fields remain visible in Blueprint defaults; the enemy type selects
+  which field controls its approach and attack distance.
 
 - `CombatCharacterEvade.cpp`: evade control and randomized animation chaining.
 - `CombatCharacter.cpp`: Enhanced Input binding and damage prevention.
