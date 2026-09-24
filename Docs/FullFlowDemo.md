@@ -90,6 +90,43 @@ attempts clear the enemy's attack and timers, then replay the same lesson with
 a fresh enemy. Evade succeeds only when a flurry trace reaches the player while
 frontal evade is held.
 
+## Tutorial timing and auto continuation
+
+Open `/Game/Variant_Combat/Blueprints/BP_CombatGameMode`, choose **Class Defaults**,
+and search for the property names below. They are in **FTUE | Timing** except
+`BasicEncounterToShowcaseDelay`, which is in **Full Flow | Timing**. All values
+are seconds and can be changed without editing C++. The values below are the
+C++ defaults; a saved Blueprint override takes precedence.
+
+| Transition or wait | Class Default property | C++ default |
+| --- | --- | ---: |
+| Welcome confirmation -> Light lesson | `WelcomeToLightDelay` | 0.7 |
+| Successful Light hit -> Heavy lesson | `LightSuccessFeedbackDuration` | 0.7 |
+| Successful Heavy hit -> Dodge lesson | `HeavySuccessFeedbackDuration` | 0.7 |
+| Dodge success -> Evade lesson | `DodgeSuccessFeedbackDuration` | 0.7 |
+| Evade success -> tutorial completion and basic encounter | `EvadeSuccessFeedbackDuration` | 0.7 |
+| Tutorial Complete message stays visible | `TutorialCompleteFeedbackDuration` | 1.25 |
+| Basic enemy death -> showcase travel | `BasicEncounterToShowcaseDelay` | 1.0 |
+
+Welcome waits for player confirmation; that input starts the first timer. The
+other lesson transitions happen after the matching successful action. The basic
+encounter starts when the Evade success timer completes; the Tutorial Complete
+message duration controls its overlay only and does not delay enemy spawning.
+The basic enemy must die before the showcase travel timer begins. Direct skip
+and jump controls bypass the corresponding success timer.
+
+`DodgeAttackStartDelay` (0 seconds) waits after the Dodge lesson appears before
+the enemy starts its attack. `DodgePromptDelay` (0 seconds) holds the enemy's
+attack pose before showing **Dodge Now**. These control timing *within* Dodge,
+not the gap between lessons. After editing defaults, compile and save
+`BP_CombatGameMode`, then replay from the main menu to check the pacing.
+
+The Space dodge itself uses `BP_CombatCharacter`'s **Dodge | Timing** and
+**Dodge | Movement** defaults. Its mesh now stays facing the opponent (screen
+right) while the unchanged procedural movement carries it backward and returns
+it to the fixed combat position. The `AM_Dash` montage, camera, capsule facing,
+invulnerability, and movement distance are unchanged.
+
 ## Demo controls
 
 | Input | Action |

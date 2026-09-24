@@ -315,12 +315,8 @@ void ACombatCharacter::DoBackDodge()
 
 		if (DodgeMontage)
 		{
-			// MM_Dash is authored as a forward dash. Turn only the visual mesh away
-			// from the opponent so the pose and the backward displacement agree,
-			// without rotating the camera, capsule, or melee facing direction.
-			FRotator DodgeMeshRotation = MeshStartingTransform.Rotator();
-			DodgeMeshRotation.Yaw += 180.0f;
-			GetMesh()->SetRelativeRotation(DodgeMeshRotation);
+			// Keep the mesh facing the opponent (screen right) while the existing
+			// procedural movement carries the capsule backward and returns it.
 
 			const float PlaybackRate = FMath::Max(DodgeMontage->GetPlayLength() / BackDodgeDuration, 0.01f);
 			const float MontageDuration = AnimInstance->Montage_Play(

@@ -1,6 +1,24 @@
 ﻿# Current work / restart handoff
 
-Updated: 2026-09-25, flurry range visibility validated after a normal editor rebuild.
+Updated: 2026-09-25, Space dodge facing and tutorial timing verified in floating PIE after a normal editor restart.
+
+## Dodge and pacing PIE verification (2026-09-25)
+
+- The restarted editor loaded a DLL newer than the source edits. `BP_CombatGameMode` and `BP_CombatCharacter` compiled with warnings treated as errors. The effective `BP_CombatGameMode` defaults read 0.7 seconds for Welcome, Light, Heavy, Dodge, and Evade success gaps; 1.25 seconds for Tutorial Complete display; and 1.0 second from basic encounter death to showcase.
+- A follow-up normal `GSGREditor Win64 Development` build reported `Target is up to date` and `Result: Succeeded` with the editor open; no Live Coding was used.
+- Floating PIE from the menu reached Welcome. Timed captures after Enter show Welcome still on screen at about 0.2 seconds and Light Attack on screen after about 0.85 seconds (`Saved/Screenshots/Pacing_WelcomeGap_early.png` and `_late.png`). This confirms the Welcome gap is active in play.
+- In the Dodge lesson, repeated Space taps during the short prompt advanced `FTUEState` to Evade. Holding F through a flurry then advanced it to Complete. A missed Dodge showed Try Again and replayed the lesson.
+- In the basic encounter, `Saved/Screenshots/Pacing_BasicDodgeMid.png` captures the player moving screen left while the mesh faces screen right. Before and after the dodge, the actor returned to `(1400, 1750, 302.15)` with yaw 0. The effective dodge distance is 220 cm and duration is 0.55 seconds.
+- Light and Heavy success gaps and the basic-death-to-showcase gap were not observed end to end in this replay: injected mouse clicks did not start an attack animation, so Light and Heavy were skipped to reach Dodge. Their effective Blueprint values and C++ scheduling paths were inspected. The showcase gap still needs a real basic-enemy kill in PIE. PIE is stopped and the editor map is `Level_Main_Menu`; injected keys were released.
+
+## Active checkpoint: dodge facing and Full Flow timing (2026-09-25)
+
+- User requested that the Space back dodge keep its movement and timing but face screen right, plus configurable waits between the Full Flow tutorial events. The old `Spacing_DodgeMid.png` capture shows the dash facing screen left. `ACombatCharacter::DoBackDodge()` applied an extra 180-degree yaw to the visual mesh before playing `/Game/Variant_Platforming/Anims/AM_Dash`; the working-tree edit removes only that yaw. Capsule movement, camera, montage, attack facing, distance, invulnerability, and return behavior remain unchanged in source.
+- `ACombatGameMode` already exposed `WelcomeToLightDelay`, `LightSuccessFeedbackDuration`, `HeavySuccessFeedbackDuration`, `DodgeSuccessFeedbackDuration`, and `TutorialCompleteFeedbackDuration` under **FTUE | Timing** in `BP_CombatGameMode`. The working-tree edit changes the C++ default for Welcome-to-Light from 0 to 0.7 seconds, adds `EvadeSuccessFeedbackDuration` (0.7 seconds) for Evade success -> completion, and exposes `BasicEncounterToShowcaseDelay` (1.0 second) under **Full Flow | Timing** in place of the hard-coded wait. Zero for the latter schedules travel next tick, with a cancellable `DemoEventTimer` handle.
+- `Docs/FullFlowDemo.md` now lists every transition/property and explains that Welcome still needs player confirmation, Tutorial Complete message duration does not delay basic enemy spawning, and direct skips bypass success timers. The C++ defaults are documented; **verify effective Blueprint defaults after restarting the editor**, especially `WelcomeToLightDelay`, because a saved Blueprint override can retain 0.
+- The initial normal build compiled the edited C++ files but could not link while the editor held `UnrealEditor-GSGR.dll`. The editor was subsequently restarted with a DLL timestamp newer than the source edits. The user had previously prohibited assistant-initiated Live Coding; do not use it.
+- The restarted Blueprint defaults and floating PIE results are recorded above. No `BP_CombatGameMode` asset change was required. Preserve the unrelated modified `BP_FlurryEnemy.uasset`, `.codex/config.toml`, and untracked imported content folders.
+- Task files: `Source/GSGR/Variant_Combat/CombatCharacter.cpp`, `Source/GSGR/Variant_Combat/CombatGameMode.h`, `Source/GSGR/Variant_Combat/CombatGameMode.cpp`, `Docs/FullFlowDemo.md`, and this handoff.
 
 ## 2026-09-25 crash review and range visibility follow-up
 

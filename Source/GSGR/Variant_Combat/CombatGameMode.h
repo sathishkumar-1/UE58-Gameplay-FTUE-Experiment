@@ -102,7 +102,7 @@ protected:
 
 	/** Delay after continuing past Welcome before the Light Attack lesson appears. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="FTUE|Timing", meta = (ClampMin = "0.0", UIMin = "0.0", Units = "s"))
-	float WelcomeToLightDelay = 0.0f;
+	float WelcomeToLightDelay = 0.7f;
 
 	/** How long Light Attack success feedback remains before the Heavy Attack lesson. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="FTUE|Timing", meta = (ClampMin = "0.0", UIMin = "0.0", Units = "s"))
@@ -124,9 +124,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="FTUE|Timing", meta = (ClampMin = "0.0", UIMin = "0.0", Units = "s"))
 	float DodgeSuccessFeedbackDuration = 0.7f;
 
+	/** How long Evade success feedback remains before tutorial completion. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="FTUE|Timing", meta = (ClampMin = "0.0", UIMin = "0.0", Units = "s"))
+	float EvadeSuccessFeedbackDuration = 0.7f;
+
 	/** How long the Tutorial Complete feedback remains visible. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="FTUE|Timing", meta = (ClampMin = "0.0", UIMin = "0.0", Units = "s"))
 	float TutorialCompleteFeedbackDuration = 1.25f;
+
+	/** Delay after the basic encounter ends before opening the showcase map. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Full Flow|Timing", meta = (ClampMin = "0.0", UIMin = "0.0", Units = "s"))
+	float BasicEncounterToShowcaseDelay = 1.0f;
 
 	/** Local-player save slot used for FTUE completion persistence. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="FTUE|Persistence")

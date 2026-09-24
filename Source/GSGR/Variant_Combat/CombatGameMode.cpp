@@ -793,7 +793,7 @@ void ACombatGameMode::HandleTutorialPlayerHit(ACombatEnemy* Enemy, bool bDodgePr
 			CombatPlayerController->ShowTutorialMessage(
 				NSLOCTEXT("CombatFTUE", "EvadeSuccessHeading", "Good Job"),
 				NSLOCTEXT("CombatFTUE", "EvadeSuccessMessage", "You evaded the flurry hit."));
-			ScheduleFTUETransition(ECombatFTUEState::Complete, DodgeSuccessFeedbackDuration);
+			ScheduleFTUETransition(ECombatFTUEState::Complete, EvadeSuccessFeedbackDuration);
 		}
 	}
 }
@@ -922,7 +922,10 @@ void ACombatGameMode::HandleDemoEnemyDied()
 	DemoEnemy = nullptr;
 	if (FullFlowStage == EFullFlowStage::BasicEncounter)
 	{
-		GetWorldTimerManager().SetTimer(DemoEventTimer, this, &ACombatGameMode::DepartForShowcase, 1.0f, false);
+		if (BasicEncounterToShowcaseDelay <= 0.0f)
+			DemoEventTimer = GetWorldTimerManager().SetTimerForNextTick(this, &ACombatGameMode::DepartForShowcase);
+		else GetWorldTimerManager().SetTimer(DemoEventTimer, this, &ACombatGameMode::DepartForShowcase,
+			BasicEncounterToShowcaseDelay, false);
 	}
 	else if (FullFlowStage == EFullFlowStage::PostShowcaseFlurry || FullFlowStage == EFullFlowStage::Mixed)
 	{
