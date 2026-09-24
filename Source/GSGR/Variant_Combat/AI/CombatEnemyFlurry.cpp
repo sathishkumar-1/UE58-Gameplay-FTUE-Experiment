@@ -34,7 +34,10 @@ void ACombatEnemy::BeginFlurryWindup()
 		return;
 	}
 	FlurryState = ECombatFlurryState::Windup;
-	FlurryStateEndTime = GetWorld()->GetTimeSeconds() + FMath::Max(0.1f, FlurryWindupDuration);
+	const float BaseWindupDuration = FMath::Max(0.1f, FlurryWindupDuration);
+	ActiveFlurryWindupDuration = BaseWindupDuration
+		+ (bTutorialControlled ? TutorialFlurryPromptDelay : 0.0f);
+	FlurryStateEndTime = GetWorld()->GetTimeSeconds() + ActiveFlurryWindupDuration;
 	NormalAttacksSinceFlurry = 0;
 	GetCharacterMovement()->StopMovementImmediately();
 	CancelAttacks();
@@ -49,9 +52,10 @@ void ACombatEnemy::BeginFlurryWindup()
 	// Sample only the preparation frames in TickFlurry. Pausing prevents the
 	// attack/charge notifies and root motion from advancing during anticipation.
 	Anim->Montage_Pause(WindupMontage);
-	const float Duration = FMath::Max(0.1f, FlurryWindupDuration);
+	const float Duration = ActiveFlurryWindupDuration;
 	UE_LOG(LogGSGR, Display, TEXT("Flurry enemy: windup (%.3f s: draw %.3f, hold %.3f)"),
-		Duration, Duration * FlurryWindupDrawFraction, Duration * (1.0f - FlurryWindupDrawFraction));
+		Duration, BaseWindupDuration * FlurryWindupDrawFraction,
+		Duration - BaseWindupDuration * FlurryWindupDrawFraction);
 }
 
 void ACombatEnemy::PlayFlurryMontage()
@@ -86,9 +90,9 @@ void ACombatEnemy::TickFlurry()
 			UAnimMontage* WindupMontage = ChargedAttackMontage ? ChargedAttackMontage : ComboAttackMontage;
 			if (WindupMontage)
 			{
-				const float Duration = FMath::Max(0.1f, FlurryWindupDuration);
-				const float Elapsed = Now - (FlurryStateEndTime - Duration);
-				const float DrawAlpha = FMath::SmoothStep(0.0f, Duration * FlurryWindupDrawFraction, Elapsed);
+				const float Elapsed = Now - (FlurryStateEndTime - ActiveFlurryWindupDuration);
+				const float DrawAlpha = FMath::SmoothStep(0.0f,
+					FMath::Max(0.1f, FlurryWindupDuration) * FlurryWindupDrawFraction, Elapsed);
 				Anim->Montage_SetPosition(WindupMontage, GetWindupPoseTime(WindupMontage, ChargeLoopSection) * DrawAlpha);
 			}
 		}
@@ -165,6 +169,8 @@ void ACombatEnemy::ResetFlurry()
 	}
 	FlurryState = ECombatFlurryState::None;
 	FlurryStateEndTime = 0.0f;
+	ActiveFlurryWindupDuration = 0.0f;
+	TutorialFlurryPromptDelay = 0.0f;
 	if (ExhaustedMontage)
 	{
 		if (UAnimInstance* Anim = GetMesh()->GetAnimInstance()) Anim->Montage_Stop(0.1f, ExhaustedMontage);

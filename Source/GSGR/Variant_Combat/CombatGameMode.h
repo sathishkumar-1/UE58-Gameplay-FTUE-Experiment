@@ -120,6 +120,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="FTUE|Timing", meta = (ClampMin = "0.0", UIMin = "0.0", Units = "s"))
 	float DodgePromptDelay = 0.0f;
 
+	/** Extra time the FTUE Evade enemy holds its flurry windup pose before the burst. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="FTUE|Timing", meta = (ClampMin = "0.0", UIMin = "0.0", Units = "s"))
+	float EvadePromptDelay = 0.7f;
+
 	/** How long dodge-success feedback remains before FTUE completion. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="FTUE|Timing", meta = (ClampMin = "0.0", UIMin = "0.0", Units = "s"))
 	float DodgeSuccessFeedbackDuration = 0.7f;
@@ -167,6 +171,7 @@ private:
 	void SetPlayerCombatPermissions(bool bLight, bool bHeavy, bool bDodge, bool bCancelDisallowed = true);
 	void RestartLevel(bool bSkipStartupMenu);
 	void RestartAfterIncompleteFTUE();
+	void PauseAfterDeathAnimation();
 	void LoadFTUEProfile();
 	void SaveFTUECompletion();
 	void SetupDemoSpawners();
@@ -232,6 +237,7 @@ private:
 	FTimerHandle DodgePromptTimer;
 	FTimerHandle TutorialCompleteUITimer;
 	FTimerHandle TutorialDeathRestartTimer;
+	FTimerHandle DeathPauseTimer;
 	FTimerHandle DemoEventTimer;
 	FTimerHandle DodgeResolveTimer;
 	FTSTicker::FDelegateHandle ReminderTickerHandle;

@@ -103,6 +103,7 @@ C++ defaults; a saved Blueprint override takes precedence.
 | Welcome confirmation -> Light lesson | `WelcomeToLightDelay` | 0.7 |
 | Successful Light hit -> Heavy lesson | `LightSuccessFeedbackDuration` | 0.7 |
 | Successful Heavy hit -> Dodge lesson | `HeavySuccessFeedbackDuration` | 0.7 |
+| FTUE Evade flurry windup hold before the burst | `EvadePromptDelay` | 0.7 |
 | Dodge success -> Evade lesson | `DodgeSuccessFeedbackDuration` | 0.7 |
 | Evade success -> tutorial completion and basic encounter | `EvadeSuccessFeedbackDuration` | 0.7 |
 | Tutorial Complete message stays visible | `TutorialCompleteFeedbackDuration` | 1.25 |
@@ -117,8 +118,13 @@ and jump controls bypass the corresponding success timer.
 
 `DodgeAttackStartDelay` (0 seconds) waits after the Dodge lesson appears before
 the enemy starts its attack. `DodgePromptDelay` (0 seconds) holds the enemy's
-attack pose before showing **Dodge Now**. These control timing *within* Dodge,
-not the gap between lessons. After editing defaults, compile and save
+attack pose before showing **Dodge Now**. `EvadePromptDelay` adds time to the
+Evade lesson's existing flurry windup; the enemy draws its fist back at the
+normal speed, holds the windup pose for the extra delay, then starts its burst.
+It applies only to the FTUE Evade enemy. The ordinary flurry and post-showcase
+reminder still use `BP_FlurryEnemy`'s `FlurryWindupDuration` without this extra
+delay. These control timing *within* a lesson, not the gap between lessons.
+After editing defaults, compile and save
 `BP_CombatGameMode`, then replay from the main menu to check the pacing.
 
 The Space dodge itself uses `BP_CombatCharacter`'s **Dodge | Timing** and
@@ -126,6 +132,38 @@ The Space dodge itself uses `BP_CombatCharacter`'s **Dodge | Timing** and
 right) while the unchanged procedural movement carries it backward and returns
 it to the fixed combat position. The `AM_Dash` montage, camera, capsule facing,
 invulnerability, and movement distance are unchanged.
+
+## Where to replace combat animations
+
+Open each Blueprint, select **Class Defaults**, and search for the property
+name. Compile and save after changing a value. The active player, basic enemy,
+and flurry enemy meshes currently use `SKM_DKM_Full` with the Dark Knight male
+skeleton (`SK_DKM_Full`); replacement sequences should use that skeleton or be
+retargeted to it. The Blueprint's mesh component also selects
+`ABP_Manny_Combat` as its **Anim Class** for the underlying idle/movement pose.
+
+| Blueprint | Property and category | Current animation |
+| --- | --- | --- |
+| `BP_CombatCharacter` | `ComboAttackMontage` — Melee Attack / Combo | `/Game/Variant_Combat/Anims/AM_ComboAttack` |
+| `BP_CombatCharacter` | `ChargedAttackMontage` — Melee Attack / Charged | `/Game/Variant_Combat/Anims/AM_ChargedAttack` |
+| `BP_CombatCharacter` | `DodgeMontage` — Dodge | `/Game/Variant_Platforming/Anims/AM_Dash` |
+| `BP_CombatCharacter` | `EvadeAnimations` — Evade | `/Game/Variant_Combat/Anims/MIxamo/Retargeted/Center_Block`, `Left_Block`, `Right_Block` |
+| `BP_CombatCharacter` | `DeathAnimation` — Damage / Animation | `/Game/Dark_Knight/Dark_Knight_Male/Animations/Anim_DKM_Death` |
+| `BP_CombatEnemy` and `BP_FlurryEnemy` | `ComboAttackMontage` — Melee Attack / Combo | `/Game/Variant_Combat/Anims/AM_ComboAttack` |
+| `BP_CombatEnemy` and `BP_FlurryEnemy` | `ChargedAttackMontage` — Melee Attack / Charged | `/Game/Variant_Combat/Anims/AM_ChargedAttack` |
+| `BP_FlurryEnemy` | `ExhaustedAnimation` — Flurry Enemy / Animation | `/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Hvy_01` |
+| `BP_CombatEnemy` and `BP_FlurryEnemy` | `DeathAnimation` — Damage / Animation | `/Game/Dark_Knight/Dark_Knight_Male/Animations/Anim_DKM_Death` |
+
+`BP_FlurryEnemy` inherits the attack and death fields from `BP_CombatEnemy`;
+you can override them separately. Its flurry windup poses the
+`ChargedAttackMontage` (or the combo montage if no charged montage is set),
+and its burst plays the `ComboAttackMontage`. The Dodge tutorial also uses the
+enemy combo montage. `ComboSectionNames`, `ChargeLoopSection`, and
+`ChargeAttackSection` must match the sections in replacement montages.
+`EvadePlayRate`, `EvadeBlendTime`, and `FlurryPlayRate` tune playback without
+replacing the assets. Player and enemy death animations play once in place of
+death ragdolls; the player death flow waits for the clip before showing Game
+Over or restarting a failed tutorial attempt.
 
 ## Demo controls
 

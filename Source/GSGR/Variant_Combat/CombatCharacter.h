@@ -175,6 +175,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Damage")
 	FName PelvisBoneName;
 
+	/** Animation played once instead of a death ragdoll. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Damage|Animation")
+	TObjectPtr<UAnimSequence> DeathAnimation;
+
 	/** Pointer to the life bar widget */
 	UPROPERTY(EditAnywhere, Category="Damage")
 	TObjectPtr<UCombatLifeBar> LifeBarWidget;
@@ -382,6 +386,7 @@ public:
 
 	/** Resets the character's current HP to maximum */
 	void ResetHP();
+	float GetDeathAnimationDuration() const;
 
 protected:
 

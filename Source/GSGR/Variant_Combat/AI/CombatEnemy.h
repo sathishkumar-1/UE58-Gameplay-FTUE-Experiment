@@ -116,10 +116,16 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="Flurry Enemy|Animation")
 	TObjectPtr<UAnimSequence> ExhaustedAnimation;
 
+	/** Animation played once instead of a death ragdoll. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Damage|Animation")
+	TObjectPtr<UAnimSequence> DeathAnimation;
+
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Flurry Enemy")
 	ECombatFlurryState FlurryState = ECombatFlurryState::None;
 
 	float FlurryStateEndTime = 0.0f;
+	float ActiveFlurryWindupDuration = 0.0f;
+	float TutorialFlurryPromptDelay = 0.0f;
 	int32 NormalAttacksSinceFlurry = 0;
 	UPROPERTY(Transient)
 	TObjectPtr<UAnimMontage> ExhaustedMontage;
@@ -320,7 +326,7 @@ public:
 	/** Approaches as needed, then starts the existing normal combo attack. */
 	void StartTutorialDodgeAttack(ACombatCharacter* TargetPlayer);
 	/** Runs one real flurry while ordinary AI remains under tutorial control. */
-	void StartTutorialFlurry(ACombatCharacter* TargetPlayer);
+	void StartTutorialFlurry(ACombatCharacter* TargetPlayer, float PromptDelay);
 	void AbortTutorialAction();
 
 	/** Resumes the paused montage and resolves its stored normal attack trace. */

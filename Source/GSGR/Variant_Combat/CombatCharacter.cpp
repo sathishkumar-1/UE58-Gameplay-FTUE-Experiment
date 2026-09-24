@@ -64,6 +64,9 @@ ACombatCharacter::ACombatCharacter()
 	if (CenterEvade.Succeeded()) EvadeAnimations.Add(CenterEvade.Object);
 	if (LeftEvade.Succeeded()) EvadeAnimations.Add(LeftEvade.Object);
 	if (RightEvade.Succeeded()) EvadeAnimations.Add(RightEvade.Object);
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> DeathAsset(
+		TEXT("/Game/Dark_Knight/Dark_Knight_Male/Animations/Anim_DKM_Death.Anim_DKM_Death"));
+	DeathAnimation = DeathAsset.Object;
 
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(35.0f, 90.0f);
@@ -381,6 +384,11 @@ void ACombatCharacter::ResetHP()
 	}
 }
 
+float ACombatCharacter::GetDeathAnimationDuration() const
+{
+	return DeathAnimation ? DeathAnimation->GetPlayLength() : 0.0f;
+}
+
 void ACombatCharacter::ComboAttack()
 {
 	if (!IsAlive() || IsBackDodgeActive() || !ComboAttackMontage)
@@ -669,13 +677,6 @@ void ACombatCharacter::ApplyDamage(float Damage, AActor* DamageCauser, const FVe
 			GetCharacterMovement()->AddImpulse(DamageImpulse, true);
 		}
 
-		// is the character ragdolling?
-		if (GetMesh()->IsSimulatingPhysics())
-		{
-			// apply an impulse to the ragdoll
-			GetMesh()->AddImpulseAtLocation(DamageImpulse * GetMesh()->GetMass(), DamageLocation);
-		}
-
 		// pass control to BP to play effects, etc.
 		ReceivedDamage(ActualDamage, DamageLocation, DamageImpulse.GetSafeNormal());
 	}
@@ -699,8 +700,11 @@ void ACombatCharacter::HandleDeath()
 	// disable movement while we're dead
 	GetCharacterMovement()->DisableMovement();
 
-	// enable full ragdoll physics
-	GetMesh()->SetSimulatePhysics(true);
+	// Keep the mesh animated instead of switching it to a death ragdoll.
+	GetMesh()->SetAllBodiesSimulatePhysics(false);
+	GetMesh()->SetSimulatePhysics(false);
+	GetMesh()->SetPhysicsBlendWeight(0.0f);
+	if (DeathAnimation) GetMesh()->PlayAnimation(DeathAnimation, false);
 
 	// hide the life bar
 	LifeBar->SetHiddenInGame(true);

@@ -30,6 +30,9 @@ ACombatEnemy::ACombatEnemy()
 	static ConstructorHelpers::FObjectFinder<UAnimSequence> TiredAsset(
 		TEXT("/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Hvy_01.MM_HitReact_Front_Hvy_01"));
 	ExhaustedAnimation = TiredAsset.Object;
+	static ConstructorHelpers::FObjectFinder<UAnimSequence> DeathAsset(
+		TEXT("/Game/Dark_Knight/Dark_Knight_Male/Animations/Anim_DKM_Death.Anim_DKM_Death"));
+	DeathAnimation = DeathAsset.Object;
 
 	// bind the attack montage ended delegate
 	OnAttackMontageEnded.BindUObject(this, &ACombatEnemy::AttackMontageEnded);
@@ -410,13 +413,6 @@ void ACombatEnemy::ApplyDamage(float Damage, AActor* DamageCauser, const FVector
 			GetCharacterMovement()->AddImpulse(DamageImpulse, true);
 		}
 
-		// is the character ragdolling?
-		if (!IsAlive() && GetMesh()->IsSimulatingPhysics())
-		{
-			// apply an impulse to the ragdoll
-			GetMesh()->AddImpulseAtLocation(DamageImpulse * GetMesh()->GetMass(), DamageLocation);
-		}
-
 		// pass control to BP to play effects, etc.
 		ReceivedDamage(ActualDamage, DamageLocation, DamageImpulse.GetSafeNormal());
 		OnDamageReceived.Broadcast(this, DamageCauser);
@@ -438,8 +434,11 @@ void ACombatEnemy::HandleDeath()
 	// disable character movement
 	GetCharacterMovement()->DisableMovement();
 
-	// enable full ragdoll physics
-	GetMesh()->SetSimulatePhysics(true);
+	// Keep the mesh animated instead of switching it to a death ragdoll.
+	GetMesh()->SetAllBodiesSimulatePhysics(false);
+	GetMesh()->SetSimulatePhysics(false);
+	GetMesh()->SetPhysicsBlendWeight(0.0f);
+	if (DeathAnimation) GetMesh()->PlayAnimation(DeathAnimation, false);
 
 	// call the died delegate to notify any subscribers
 	OnEnemyDied.Broadcast();
@@ -613,6 +612,7 @@ void ACombatEnemy::SetTutorialControlled(bool bControlled)
 	bTutorialControlled = bControlled;
 	bTutorialFlurryRequested = false;
 	bTutorialFlurryActive = false;
+	TutorialFlurryPromptDelay = 0.0f;
 	bTutorialAttackRequested = false;
 	bTutorialDodgeWindowConsumed = !bControlled;
 	TutorialDamageSourceBone = NAME_None;
@@ -648,13 +648,14 @@ void ACombatEnemy::StartTutorialDodgeAttack(ACombatCharacter* TargetPlayer)
 	TutorialDamageSourceBone = NAME_None;
 }
 
-void ACombatEnemy::StartTutorialFlurry(ACombatCharacter* TargetPlayer)
+void ACombatEnemy::StartTutorialFlurry(ACombatCharacter* TargetPlayer, float PromptDelay)
 {
 	if (!bTutorialControlled || !bFlurryEnemy || !IsAlive() || !IsValid(TargetPlayer)) return;
 	CancelAttacks();
 	TutorialTarget = TargetPlayer;
 	bTutorialAttackRequested = false;
 	bTutorialDodgeWindowConsumed = false;
+	TutorialFlurryPromptDelay = FMath::Max(0.0f, PromptDelay);
 	bTutorialFlurryRequested = true;
 }
 
@@ -664,6 +665,7 @@ void ACombatEnemy::AbortTutorialAction()
 	bTutorialDodgeWindowConsumed = true;
 	bTutorialFlurryRequested = false;
 	bTutorialFlurryActive = false;
+	TutorialFlurryPromptDelay = 0.0f;
 	SetTutorialAttackFrozen(false);
 	ResetFlurry();
 	CancelAttacks();

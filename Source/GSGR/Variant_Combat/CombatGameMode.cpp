@@ -69,6 +69,7 @@ void ACombatGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	GetWorldTimerManager().ClearTimer(DodgePromptTimer);
 	GetWorldTimerManager().ClearTimer(TutorialCompleteUITimer);
 	GetWorldTimerManager().ClearTimer(TutorialDeathRestartTimer);
+	GetWorldTimerManager().ClearTimer(DeathPauseTimer);
 	CleanupFTUE();
 
 	if (CombatPlayer)
@@ -311,7 +312,7 @@ void ACombatGameMode::EnterFTUEState(ECombatFTUEState NewState)
 				NSLOCTEXT("CombatFTUE", "EvadeHeading", "Evade the Flurry"),
 				FText::Format(NSLOCTEXT("CombatFTUE", "EvadePrompt", "Flurry incoming - hold {0} to evade a hit"),
 					CombatPlayerController->GetBindingDisplayText(CombatPlayer->GetEvadeAction())));
-			if (TutorialEnemy) TutorialEnemy->StartTutorialFlurry(CombatPlayer);
+			if (TutorialEnemy) TutorialEnemy->StartTutorialFlurry(CombatPlayer, EvadePromptDelay);
 		}
 		break;
 
@@ -629,8 +630,13 @@ void ACombatGameMode::HandlePlayerDied()
 		bGameOver = true;
 		FinalSurvivalTime = SurvivalTime;
 		SetPlayerCombatPermissions(false, false, false);
-		UGameplayStatics::SetGamePaused(this, true);
-		CombatPlayerController->ShowGameOver(FinalSurvivalTime);
+		const float DeathDuration = CombatPlayer ? CombatPlayer->GetDeathAnimationDuration() : 0.0f;
+		if (DeathDuration > 0.0f)
+		{
+			GetWorldTimerManager().SetTimer(DeathPauseTimer, this, &ACombatGameMode::PauseAfterDeathAnimation,
+				DeathDuration, false);
+		}
+		else PauseAfterDeathAnimation();
 		return;
 	}
 
@@ -639,8 +645,22 @@ void ACombatGameMode::HandlePlayerDied()
 		FTUEState = ECombatFTUEState::None;
 		CleanupFTUE();
 		SetPlayerCombatPermissions(false, false, false);
-		GetWorldTimerManager().SetTimerForNextTick(this, &ACombatGameMode::RestartAfterIncompleteFTUE);
+		const float DeathDuration = CombatPlayer ? CombatPlayer->GetDeathAnimationDuration() : 0.0f;
+		if (DeathDuration > 0.0f)
+		{
+			GetWorldTimerManager().SetTimer(TutorialDeathRestartTimer, this,
+				&ACombatGameMode::RestartAfterIncompleteFTUE, DeathDuration, false);
+		}
+		else TutorialDeathRestartTimer = GetWorldTimerManager().SetTimerForNextTick(
+			this, &ACombatGameMode::RestartAfterIncompleteFTUE);
 	}
+}
+
+void ACombatGameMode::PauseAfterDeathAnimation()
+{
+	if (!bGameOver) return;
+	UGameplayStatics::SetGamePaused(this, true);
+	if (CombatPlayerController) CombatPlayerController->ShowGameOver(FinalSurvivalTime);
 }
 
 void ACombatGameMode::HandleRestartSelected()
@@ -651,6 +671,7 @@ void ACombatGameMode::HandleRestartSelected()
 	}
 
 	bGameOver = false;
+	GetWorldTimerManager().ClearTimer(DeathPauseTimer);
 	UGameplayStatics::SetGamePaused(this, false);
 	if (bFullFlowDemo)
 	{

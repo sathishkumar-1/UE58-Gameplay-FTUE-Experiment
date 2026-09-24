@@ -1,6 +1,24 @@
 ﻿# Current work / restart handoff
 
-Updated: 2026-09-25, Space dodge facing and tutorial timing verified in floating PIE after a normal editor restart.
+Updated: 2026-09-25, FTUE Evade windup and death animation work validated in PIE.
+
+## 2026-09-25 publication checkpoint
+
+- User requested committing and pushing all current changes on `main`, including the FTUE windup and death-animation implementation, documentation, pre-existing Blueprint and `.codex/config.toml` edits, and four imported content folders.
+- The imported folders contain 1,275 `.uasset` and 20 `.umap` files (about 2.7 GiB total). Both extensions are configured for Git LFS in `.gitattributes`. The config edit only adds approval mode for the local Unreal MCP tool listing.
+- The normal editor build, four affected Blueprint compiles, and PIE checks are recorded below. Physical gamepad and packaged play remain untested. The intended commit includes this handoff; push and commit identity are reported in the publication response.
+
+## Active checkpoint: FTUE Evade windup and death animation (2026-09-25)
+
+- User requested one configurable **FTUE-only Evade prompt delay**: hold the tutorial flurry in windup, then let its attack begin after the delay. The post-showcase reminder and ordinary flurry timing must stay unchanged. Also requested animated deaths in place of death ragdolls and an animation-variable guide in `Docs/FullFlowDemo.md`.
+- User authorized using `Saved/EvadePlaytest.ps1` and its input parameters for PIE without asking for each invocation. Keep the handoff current during implementation.
+- Initial inspection: `StartTutorialFlurry` is called from `ACombatGameMode::EnterFTUEState(Evade)`; the flurry state code is in `CombatEnemyFlurry.cpp` and `CombatEnemy.cpp`. Existing death assets include mannequin `MM_Death_*` and Dark Knight `Anim_DKM_Death`; compatibility and existing player/enemy death paths still need inspection.
+- Preserve pre-existing local changes to `.codex/config.toml`, `BP_FlurryEnemy.uasset`, `BP_CombatGameMode.uasset`, and the four untracked imported content folders. The `BP_CombatGameMode` asset was already modified before this task; inspect its effective defaults, and edit only the requested new property if required.
+- Implementation now in source: `EvadePromptDelay` (0.7 s) is passed only by the FTUE Evade state to the tutorial enemy. The flurry retains its normal draw timing and holds the windup pose for this added interval; regular and reminder flurries do not receive it. Both combat classes now expose `DeathAnimation`, defaulting to the existing matching Dark Knight male clip. Death ragdoll activation has been replaced by one-shot animation; the player flow waits for its duration before pausing at Game Over or restarting a failed FTUE attempt. `Docs/FullFlowDemo.md` lists animation fields and locations.
+- Restart validation: the editor was relaunched with `UnrealEditor-GSGR.dll` dated 03:40:39, newer than all edited C++ files. UnrealBuildTool `Log.txt` at 03:40:40 reports `Result: Succeeded`; no Live Coding was used. The effective `BP_CombatGameMode.EvadePromptDelay` is 0.7 seconds, and the player, basic enemy, and flurry enemy `DeathAnimation` defaults all reference `Anim_DKM_Death`. All four affected Blueprints compiled with warnings treated as errors.
+- Floating PIE from the menu reached FTUE Evade. The tutorial flurry logged a 1.300-second windup (0.600 Blueprint base plus 0.700 prompt hold), including 0.210 seconds of draw and 1.090 seconds of hold. Holding F through a real hit completed FTUE. A direct `2` jump in a fresh run logged the ordinary post-showcase windup at 0.600 seconds, with its 0.210-second draw and 0.390-second hold unchanged.
+- In the fresh post-showcase run, unguarded enemy hits killed the player; the death pose played and Game Over appeared afterward with survival time 00:14.26. Restart returned to the menu. A second post-showcase run held F through a flurry, released at exhaustion, and one light hit killed the flurry enemy. The captured enemy lay in the death pose while a new enemy spawned; no ragdoll was seen. The enemy retains its existing five-second removal timer. Evidence is in `Saved/Logs/GSGR.log` and ignored `Saved/Screenshots/New*.png`. PIE is stopped and injected keys were released.
+- Source review and `git diff --check -- Source Docs` passed. The previously modified `BP_CombatGameMode` and `BP_FlurryEnemy` assets, `.codex/config.toml`, and four untracked content folders were preserved. Remaining visual judgment is the user's choice of final death clips; physical gamepad and packaged play were not tested.
 
 ## Dodge and pacing PIE verification (2026-09-25)
 
