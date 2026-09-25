@@ -1,6 +1,13 @@
 ﻿# Current work / restart handoff
 
-Updated: 2026-09-25, editable demo shortcuts and main-menu migration implemented and checked in PIE.
+Updated: 2026-09-25, publication handoff after the menu and flurry follow-ups.
+
+## Latest handoff and publication (2026-09-25)
+
+- `main` and `origin/main` were both at `7fb28d1` before this update. Since the editable-shortcuts/menu migration in `38631d1`, commits `14bb706`, `9c47d3b`, `c7b5579`, and `cf8262e` added and saved the trimmed flurry exhausted animation, made its playback ping-pong, and turned the flurry to face the player during exhaustion. Commit `7fb28d1` made the main-menu fallback's background blur fill the viewport.
+- The current pending editor save is `Content/Variant_Combat/UI/WBP_MainMenu.uasset` (Git LFS). Its binary contents changed after the menu implementation was committed; the exact Designer or Blueprint delta has not been inspected or replayed in PIE in this handoff. Include that save with this documentation update in the next commit and push.
+- The earlier normal build, affected Blueprint compiles, and floating PIE route checks for the editable shortcuts and Widget Blueprint menu are recorded below. Those checks predate the latest flurry and blur follow-ups and this pending Widget Blueprint save. A fresh normal build, PIE pass over the latest menu/flurry state, physical gamepad pass, and packaged run remain unverified here.
+- `Docs/FullFlowDemo.md` still names the prior `MM_HitReact_Front_Hvy_01` asset for `BP_FlurryEnemy.ExhaustedAnimation`; inspect the effective Blueprint default and update the guide if the new `anim_Exhausted` asset replaced it. The old pre-restart section below is retained as historical context; its statements about unsaved assets and uncommitted implementation no longer describe the current tree.
 
 ## Editable shortcuts and main menu completion (2026-09-25)
 
