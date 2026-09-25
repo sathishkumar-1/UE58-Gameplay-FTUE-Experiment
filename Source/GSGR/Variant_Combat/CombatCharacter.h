@@ -257,6 +257,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Melee Attack|VFX")
 	TObjectPtr<UNiagaraSystem> ChargedHitVFX;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Melee Attack|VFX")
+	FVector HitVFXScale = FVector(0.01f);
+
 	/** Name of the AnimMontage section that corresponds to the charge loop */
 	UPROPERTY(EditAnywhere, Category="Melee Attack|Charged")
 	FName ChargeLoopSection;

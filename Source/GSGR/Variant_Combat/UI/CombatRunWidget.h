@@ -55,6 +55,7 @@ protected:
 private:
 
 	void BuildWidgetTree();
+	void SetTutorialPanelLayout(bool bTutorial);
 	void SetMenuInteractionEnabled(bool bEnabled);
 
 	UPROPERTY(Transient)

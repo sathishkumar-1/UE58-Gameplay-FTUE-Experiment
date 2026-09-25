@@ -1,5 +1,21 @@
 ﻿# Current work / restart handoff
 
+Updated: 2026-09-25, pre-change publication for FTUE Evade animation follow-up.
+
+## FTUE Evade animation follow-up: pre-change checkpoint
+
+- User reports that pressing Evade in the FTUE immediately advances to success and cuts off the player evade and enemy flurry attack animations. Requested that both animations finish before success, with no unrelated changes.
+- Before implementing, user explicitly requested a commit and push of **all current working-tree changes**. The snapshot includes editor profile/config, three Niagara systems, four combat Blueprints, player/enemy hit VFX scale C++, tutorial banner placement C++, and this handoff. These changes predate the Evade timing fix.
+- Next: commit and push the snapshot, then inspect the Evade success path and flurry lifecycle; implement and verify the narrow timing fix. Record the resulting commit/push and any build or PIE limitation here.
+
+Updated: 2026-09-25, tutorial banner placement changed; rebuild and visual PIE check remain.
+
+## Tutorial banner at top (2026-09-25)
+
+- `UCombatRunWidget::ShowTutorialMessage` now positions the shared message panel at the top center with a 16 px top inset. The combat cue moves below it while a tutorial message is shown. Startup menu, showcase, and Game Over restore the centered panel and original cue position.
+- `git diff --check` passed. The Unreal Editor is open, so the modified C++ has not been rebuilt or visually checked in PIE. Rebuild after the editor closes, then check Welcome, attack, Dodge, Evade, and Tutorial Complete messages, plus the other screens.
+- Preserve the unrelated local VFX edits and assets already present in the working tree.
+
 Updated: 2026-09-25, attack hit VFX loaded and compiled after a normal rebuild; visual PIE checks remain.
 
 ## Active checkpoint: per-attack hit VFX (2026-09-25)

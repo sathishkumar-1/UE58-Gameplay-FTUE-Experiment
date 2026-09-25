@@ -236,6 +236,7 @@ void UCombatRunWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime
 
 void UCombatRunWidget::ShowStartupMenu()
 {
+	SetTutorialPanelLayout(false);
 	SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	BackgroundBlur->SetVisibility(ESlateVisibility::Visible);
 	MessagePanel->SetVisibility(ESlateVisibility::Visible);
@@ -251,6 +252,7 @@ void UCombatRunWidget::ShowStartupMenu()
 
 void UCombatRunWidget::ShowTutorialMessage(const FText& Heading, const FText& Message)
 {
+	SetTutorialPanelLayout(true);
 	SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	BackgroundBlur->SetVisibility(ESlateVisibility::Collapsed);
 	MessagePanel->SetVisibility(ESlateVisibility::HitTestInvisible);
@@ -273,6 +275,7 @@ void UCombatRunWidget::ShowTutorialComplete()
 
 void UCombatRunWidget::ShowGameOver(float FinalSurvivalTime)
 {
+	SetTutorialPanelLayout(false);
 	const int32 TotalHundredths = FMath::Max(0, FMath::RoundToInt(FinalSurvivalTime * 100.0f));
 	const int32 Minutes = TotalHundredths / 6000;
 	const int32 Seconds = (TotalHundredths / 100) % 60;
@@ -301,6 +304,7 @@ void UCombatRunWidget::HideOverlay()
 
 void UCombatRunWidget::ShowShowcase()
 {
+	SetTutorialPanelLayout(false);
 	SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	BackgroundBlur->SetVisibility(ESlateVisibility::Visible);
 	MessagePanel->SetVisibility(ESlateVisibility::Visible);
@@ -346,6 +350,19 @@ void UCombatRunWidget::SetMenuInteractionEnabled(bool bEnabled)
 	PlayButton->SetIsEnabled(bEnabled);
 	RestartButton->SetIsEnabled(bEnabled);
 	QuitButton->SetIsEnabled(bEnabled);
+}
+
+void UCombatRunWidget::SetTutorialPanelLayout(bool bTutorial)
+{
+	if (UOverlaySlot* PanelSlot = Cast<UOverlaySlot>(MessagePanel->GetParent()->Slot))
+	{
+		PanelSlot->SetVerticalAlignment(bTutorial ? VAlign_Top : VAlign_Center);
+		PanelSlot->SetPadding(bTutorial ? FMargin(0.0f, 150.0f, 0.0f, 0.0f) : FMargin(0.0f));
+	}
+	if (UOverlaySlot* CueSlot = Cast<UOverlaySlot>(CombatCueText->Slot))
+	{
+		CueSlot->SetPadding(bTutorial ? FMargin(20.0f, 250.0f, 20.0f, 0.0f) : FMargin(20.0f, 60.0f));
+	}
 }
 
 void UCombatRunWidget::HandlePlayClicked()

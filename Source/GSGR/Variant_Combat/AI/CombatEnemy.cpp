@@ -476,7 +476,7 @@ void ACombatEnemy::SpawnHitVFX(const FVector& ImpactPoint, const FVector& Damage
 	}
 	if (Effect)
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), Effect, ImpactPoint, DamageDirection.Rotation());
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), Effect, ImpactPoint, DamageDirection.Rotation(), HitVFXScale, true);
 	}
 }
 
