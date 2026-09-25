@@ -30,7 +30,9 @@ void UCombatMainMenuWidget::BuildDefaultLayout()
 
 	UBackgroundBlur* Blur = WidgetTree->ConstructWidget<UBackgroundBlur>();
 	Blur->SetBlurStrength(20.0f);
-	Root->AddChildToOverlay(Blur);
+	UOverlaySlot* BlurSlot = Root->AddChildToOverlay(Blur);
+	BlurSlot->SetHorizontalAlignment(HAlign_Fill);
+	BlurSlot->SetVerticalAlignment(VAlign_Fill);
 
 	USizeBox* PanelSize = WidgetTree->ConstructWidget<USizeBox>();
 	PanelSize->SetWidthOverride(580.0f);
