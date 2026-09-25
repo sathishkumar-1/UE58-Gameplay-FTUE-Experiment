@@ -16,6 +16,8 @@
 #include "CombatGameMode.h"
 #include "Animation/AnimSequence.h"
 #include "UObject/ConstructorHelpers.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 
 namespace
 {
@@ -33,6 +35,11 @@ ACombatEnemy::ACombatEnemy()
 	static ConstructorHelpers::FObjectFinder<UAnimSequence> DeathAsset(
 		TEXT("/Game/Dark_Knight/Dark_Knight_Male/Animations/Anim_DKM_Death.Anim_DKM_Death"));
 	DeathAnimation = DeathAsset.Object;
+	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> HitVFXAsset(
+		TEXT("/Game/Variant_Combat/VFX/NS_Damage.NS_Damage"));
+	ComboHitVFX = HitVFXAsset.Object;
+	ChargedHitVFX = HitVFXAsset.Object;
+	FlurryHitVFX = HitVFXAsset.Object;
 
 	// bind the attack montage ended delegate
 	OnAttackMontageEnded.BindUObject(this, &ACombatEnemy::AttackMontageEnded);
@@ -403,6 +410,10 @@ void ACombatEnemy::ApplyDamage(float Damage, AActor* DamageCauser, const FVector
 	// only process knockback and effects if we received nonzero damage
 	if (ActualDamage > 0.0f)
 	{
+		if (const ACombatCharacter* Attacker = Cast<ACombatCharacter>(DamageCauser))
+		{
+			Attacker->SpawnHitVFX(DamageLocation, DamageImpulse.GetSafeNormal());
+		}
 		if (IsAlive())
 		{
 			CancelAttacks();
@@ -445,6 +456,28 @@ void ACombatEnemy::HandleDeath()
 
 	// set up the death timer
 	GetWorld()->GetTimerManager().SetTimer(DeathTimer, this, &ACombatEnemy::RemoveFromLevel, DeathRemovalTime);
+}
+
+void ACombatEnemy::SpawnHitVFX(const FVector& ImpactPoint, const FVector& DamageDirection) const
+{
+	UNiagaraSystem* Effect = nullptr;
+	if (FlurryState == ECombatFlurryState::Flurry)
+	{
+		Effect = FlurryHitVFX.Get();
+	}
+	else if (const UAnimInstance* Anim = GetMesh()->GetAnimInstance();
+		Anim && ChargedAttackMontage && Anim->Montage_IsPlaying(ChargedAttackMontage))
+	{
+		Effect = ChargedHitVFX.Get();
+	}
+	else
+	{
+		Effect = ComboHitVFX.Get();
+	}
+	if (Effect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), Effect, ImpactPoint, DamageDirection.Rotation());
+	}
 }
 
 void ACombatEnemy::ApplyHealing(float Healing, AActor* Healer)

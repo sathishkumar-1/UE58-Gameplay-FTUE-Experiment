@@ -20,6 +20,8 @@
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimSequence.h"
 #include "UObject/ConstructorHelpers.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 
 DEFINE_LOG_CATEGORY(LogCombatCharacter);
 
@@ -67,6 +69,10 @@ ACombatCharacter::ACombatCharacter()
 	static ConstructorHelpers::FObjectFinder<UAnimSequence> DeathAsset(
 		TEXT("/Game/Dark_Knight/Dark_Knight_Male/Animations/Anim_DKM_Death.Anim_DKM_Death"));
 	DeathAnimation = DeathAsset.Object;
+	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> HitVFXAsset(
+		TEXT("/Game/Variant_Combat/VFX/NS_Damage.NS_Damage"));
+	ComboHitVFX = HitVFXAsset.Object;
+	ChargedHitVFX = HitVFXAsset.Object;
 
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(35.0f, 90.0f);
@@ -661,6 +667,10 @@ void ACombatCharacter::ApplyDamage(float Damage, AActor* DamageCauser, const FVe
 	// only process knockback and effects if we received nonzero damage
 	if (ActualDamage > 0.0f)
 	{
+		if (const ACombatEnemy* Attacker = Cast<ACombatEnemy>(DamageCauser))
+		{
+			Attacker->SpawnHitVFX(DamageLocation, DamageImpulse.GetSafeNormal());
+		}
 		if (IsAlive())
 		{
 			if (IsBackDodgeActive())
@@ -681,6 +691,16 @@ void ACombatCharacter::ApplyDamage(float Damage, AActor* DamageCauser, const FVe
 		ReceivedDamage(ActualDamage, DamageLocation, DamageImpulse.GetSafeNormal());
 	}
 
+}
+
+void ACombatCharacter::SpawnHitVFX(const FVector& ImpactPoint, const FVector& DamageDirection) const
+{
+	UNiagaraSystem* Effect = ActiveAttackType == ECombatPlayerAttackType::Heavy
+		? ChargedHitVFX.Get() : ComboHitVFX.Get();
+	if (Effect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), Effect, ImpactPoint, DamageDirection.Rotation());
+	}
 }
 
 void ACombatCharacter::HandleDeath()

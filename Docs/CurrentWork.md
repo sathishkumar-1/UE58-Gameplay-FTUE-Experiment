@@ -1,5 +1,19 @@
 ﻿# Current work / restart handoff
 
+Updated: 2026-09-25, attack hit VFX loaded and compiled after a normal rebuild; visual PIE checks remain.
+
+## Active checkpoint: per-attack hit VFX (2026-09-25)
+
+- User requested Blueprint-editable Niagara VFX slots for player combo/charged hits and enemy combo/charged/flurry hits, with no unrelated changes. This work is local and **not committed or pushed**.
+- Added `ComboHitVFX` and `ChargedHitVFX` to `ACombatCharacter`, plus `ComboHitVFX`, `ChargedHitVFX`, and `FlurryHitVFX` to `ACombatEnemy` (inherited by `BP_FlurryEnemy`). All are under **Melee Attack | VFX** in Class Defaults and default to the previously used `/Game/Variant_Combat/VFX/NS_Damage`. Added the Niagara module dependency.
+- The target's `ApplyDamage` invokes the attacker's selected Niagara effect at the original impact point and orientation only when `TakeDamage` accepts positive damage. Player selection uses `ActiveAttackType`; enemy selection checks flurry first, then the charged montage, then combo. The existing `ReceivedDamage` Blueprint camera shake remains. Removed only the old generic Niagara spawn and its now-unused rotation node from `BP_CombatCharacter`, `BP_CombatEnemy`, and `BP_FlurryEnemy` so hits do not show duplicate effects.
+- Before the restart, all three affected Blueprints compiled with warnings treated as errors and were saved to disk. The first normal `GSGREditor Win64 Development` build ran UHT and compiled the changed C++ translation units, but linking failed with `LNK1104` because the open editor held `UnrealEditor-GSGR.dll` and Live Coding held its PDB. A subsequent Live Coding attempt reported success with **no code changes detected**. The restart and successful build below supersede this failed attempt.
+- The user restarted and rebuilt the editor. `UnrealEditor-GSGR.dll` is newer than the edited source, and the UnrealBuildTool log reports `Result: Succeeded`. In the loaded editor, the `BP_CombatCharacter` class default has both hit VFX fields and `BP_CombatEnemy` and `BP_FlurryEnemy` have all three; every field resolves to `/Game/Variant_Combat/VFX/NS_Damage`. All three Blueprints compiled with warnings treated as errors and were saved again. `git diff --check -- Source Docs` passed.
+- Floating PIE opened on the main menu, but input-driven hit validation could not be completed. The existing local input helper found the initial preview, then stopped finding it despite PIE remaining active; the Computer Use capture bridge returned `SetIsBorderRequired failed: No such interface supported (0x80004002)` on both attempts. PIE was stopped. Verify player combo and charged hits, basic enemy combo and charged hits, and flurry hits in PIE, including no VFX on evaded/zero-damage hits and no double-spawn. Do not change the user's chosen VFX assets.
+- Pending files: `Source/GSGR/GSGR.Build.cs`, `CombatCharacter.h/.cpp`, `AI/CombatEnemy.h/.cpp`, the three Blueprint assets above, and this handoff. The earlier publication checkpoint below is historical.
+
+## Previous publication checkpoint (2026-09-25)
+
 Updated: 2026-09-25, publication handoff after the menu and flurry follow-ups.
 
 ## Latest handoff and publication (2026-09-25)

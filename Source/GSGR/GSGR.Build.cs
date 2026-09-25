@@ -14,6 +14,7 @@ public class GSGR : ModuleRules
 			"Engine",
 			"InputCore",
 			"EnhancedInput",
+			"Niagara",
 			"AIModule",
 			"StateTreeModule",
 			"GameplayStateTreeModule",

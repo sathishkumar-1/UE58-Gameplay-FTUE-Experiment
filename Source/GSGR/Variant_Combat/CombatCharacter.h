@@ -13,6 +13,7 @@ class USpringArmComponent;
 class UCameraComponent;
 class UInputAction;
 class UAnimSequence;
+class UNiagaraSystem;
 struct FInputActionValue;
 class UCombatLifeBar;
 class UWidgetComponent;
@@ -233,6 +234,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Melee Attack|Combo")
 	UAnimMontage* ComboAttackMontage;
 
+	/** Niagara effect spawned on an enemy when a combo hit deals damage. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Melee Attack|VFX")
+	TObjectPtr<UNiagaraSystem> ComboHitVFX;
+
 	/** Names of the AnimMontage sections that correspond to each stage of the combo attack */
 	UPROPERTY(EditAnywhere, Category="Melee Attack|Combo")
 	TArray<FName> ComboSectionNames;
@@ -247,6 +252,10 @@ protected:
 	/** AnimMontage that will play for charged attacks */
 	UPROPERTY(EditAnywhere, Category="Melee Attack|Charged")
 	UAnimMontage* ChargedAttackMontage;
+
+	/** Niagara effect spawned on an enemy when a charged hit deals damage. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Melee Attack|VFX")
+	TObjectPtr<UNiagaraSystem> ChargedHitVFX;
 
 	/** Name of the AnimMontage section that corresponds to the charge loop */
 	UPROPERTY(EditAnywhere, Category="Melee Attack|Charged")
@@ -461,6 +470,9 @@ public:
 
 	/** Overrides the default TakeDamage functionality */
 	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+
+	/** Plays this attacker's selected effect after the target accepts damage. */
+	void SpawnHitVFX(const FVector& ImpactPoint, const FVector& DamageDirection) const;
 
 	/** Overrides landing to reset damage ragdoll physics */
 	virtual void Landed(const FHitResult& Hit) override;
