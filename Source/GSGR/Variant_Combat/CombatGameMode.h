@@ -252,4 +252,5 @@ private:
 	bool bReminderShown = false;
 	bool bReminderOpen = false;
 	bool bDemoTransitionPending = false;
+	bool bEvadeSuccessPending = false;
 };

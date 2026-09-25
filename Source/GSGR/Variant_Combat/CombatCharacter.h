@@ -134,6 +134,7 @@ protected:
 	TObjectPtr<UAnimMontage> EvadeMontage;
 
 	int32 LastEvadeAnimationIndex = INDEX_NONE;
+	bool bFinishCurrentEvadeAnimation = false;
 	void UpdateEvadeAnimation();
 
 	/** Toggle Camera Side Input Action */
@@ -382,6 +383,7 @@ public:
 	UFUNCTION(BlueprintPure, Category="Evade")
 	bool IsEvading() const { return bIsEvading; }
 	bool HasJustEvadedHit() const;
+	void FinishCurrentEvadeAnimation();
 	void SetEvadingAllowed(bool bAllowed);
 	const UInputAction* GetEvadeAction() const { return EvadeAction; }
 

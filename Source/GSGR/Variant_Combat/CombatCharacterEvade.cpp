@@ -10,12 +10,14 @@ void ACombatCharacter::StartEvading()
 	CancelAttacks();
 	RestoreAnimationAfterHit();
 	bIsEvading = true;
+	bFinishCurrentEvadeAnimation = false;
 	UpdateEvadeAnimation();
 }
 
 void ACombatCharacter::StopEvading()
 {
 	bIsEvading = false;
+	bFinishCurrentEvadeAnimation = false;
 	LastEvadedHitTime = -1000.0f;
 	if (EvadeMontage)
 	{
@@ -28,12 +30,28 @@ void ACombatCharacter::StopEvading()
 	}
 }
 
+void ACombatCharacter::FinishCurrentEvadeAnimation()
+{
+	// Keep the current clip playing, but do not let held input start another one.
+	bAllowEvadeInput = false;
+	if (bIsEvading) bFinishCurrentEvadeAnimation = true;
+}
+
 void ACombatCharacter::UpdateEvadeAnimation()
 {
 	if (!bIsEvading) return;
-	if (!IsAlive() || !bAllowEvadeInput) { StopEvading(); return; }
+	if (!IsAlive() || (!bAllowEvadeInput && !bFinishCurrentEvadeAnimation)) { StopEvading(); return; }
 	UAnimInstance* Anim = GetMesh()->GetAnimInstance();
-	if (!Anim) return;
+	if (!Anim)
+	{
+		if (bFinishCurrentEvadeAnimation) StopEvading();
+		return;
+	}
+	if (bFinishCurrentEvadeAnimation)
+	{
+		if (!EvadeMontage || !Anim->Montage_IsPlaying(EvadeMontage)) StopEvading();
+		return;
+	}
 
 	const float PlayRate = FMath::Max(0.1f, EvadePlayRate);
 	const float BlendTime = FMath::Clamp(EvadeBlendTime, 0.0f, 0.3f);

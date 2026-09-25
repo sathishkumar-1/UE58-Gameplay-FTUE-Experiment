@@ -131,6 +131,21 @@ void ACombatGameMode::Tick(float DeltaSeconds)
 	{
 		ShowEvadeReminder();
 	}
+	if (bEvadeSuccessPending && CombatPlayer
+		&& (!IsValid(TutorialEnemy) || TutorialEnemy->GetFlurryState() == ECombatFlurryState::Recovering
+			|| TutorialEnemy->GetFlurryState() == ECombatFlurryState::None))
+	{
+		CombatPlayer->FinishCurrentEvadeAnimation();
+		if (!CombatPlayer->IsEvading())
+		{
+			bEvadeSuccessPending = false;
+			SetPlayerCombatPermissions(false, false, false);
+			CombatPlayerController->ShowTutorialMessage(
+				NSLOCTEXT("CombatFTUE", "EvadeSuccessHeading", "Good Job"),
+				NSLOCTEXT("CombatFTUE", "EvadeSuccessMessage", "You evaded the flurry hit."));
+			ScheduleFTUETransition(ECombatFTUEState::Complete, EvadeSuccessFeedbackDuration);
+		}
+	}
 	if (bFullFlowDemo && FTUEState == ECombatFTUEState::Evade && IsValid(TutorialEnemy)
 		&& TutorialEnemy->GetFlurryState() == ECombatFlurryState::Recovering && !bDemoTransitionPending)
 	{
@@ -272,6 +287,7 @@ void ACombatGameMode::EnterFTUEState(ECombatFTUEState NewState)
 	bFTUETransitionPending = false;
 	bDodgeAttackStartDelayElapsed = false;
 	bDodgePromptPending = false;
+	bEvadeSuccessPending = false;
 	PendingFTUEState = ECombatFTUEState::None;
 	FTUEState = NewState;
 	CombatPlayerController->SetAwaitingWelcomeInput(false);
@@ -593,6 +609,7 @@ void ACombatGameMode::CleanupFTUE()
 	bWaitingForDodgeInput = false;
 	bDodgeAttackStartDelayElapsed = false;
 	bDodgePromptPending = false;
+	bEvadeSuccessPending = false;
 	PendingFTUEState = ECombatFTUEState::None;
 
 	if (TutorialEnemy)
@@ -832,11 +849,7 @@ void ACombatGameMode::HandleTutorialPlayerHit(ACombatEnemy* Enemy, bool bDodgePr
 		else
 		{
 			bDemoTransitionPending = true;
-			SetPlayerCombatPermissions(false, false, false);
-			CombatPlayerController->ShowTutorialMessage(
-				NSLOCTEXT("CombatFTUE", "EvadeSuccessHeading", "Good Job"),
-				NSLOCTEXT("CombatFTUE", "EvadeSuccessMessage", "You evaded the flurry hit."));
-			ScheduleFTUETransition(ECombatFTUEState::Complete, EvadeSuccessFeedbackDuration);
+			bEvadeSuccessPending = true;
 		}
 	}
 }

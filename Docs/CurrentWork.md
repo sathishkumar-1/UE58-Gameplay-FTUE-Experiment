@@ -1,6 +1,15 @@
 ﻿# Current work / restart handoff
 
-Updated: 2026-09-25, pre-change publication for FTUE Evade animation follow-up.
+Updated: 2026-09-25, FTUE Evade animation completion fix compiled and exercised in floating PIE.
+
+## FTUE Evade animation completion: implementation checkpoint
+
+- Pre-change snapshot `ce83a6b` (`Checkpoint current combat UI and VFX edits`) was pushed to `origin/main` before this implementation, including all 15 files then modified. The working tree was clean immediately afterward.
+- Cause: the first protected flurry hit disabled Evade immediately and scheduled FTUE completion after the fixed feedback delay. This stopped the player's evade montage and removed the tutorial enemy before its flurry finished.
+- Now the protected hit records pending success while leaving Evade and the flurry running. The GameMode waits until the tutorial enemy reaches recovery, asks the player to finish the current evade clip without starting another, then shows Good Job and applies the existing `EvadeSuccessFeedbackDuration` before completion. Normal input release, failed-hit retry, direct skip, and non-tutorial flurries keep their existing paths.
+- Changes are limited to `CombatGameMode.h/.cpp`, `CombatCharacter.h`, `CombatCharacterEvade.cpp`, and this handoff. The user compiled after the final source edit; the editor log at 09:44:23 UTC says Live Coding succeeded, and UnrealBuildTool reports `Result: Succeeded`. No normal rebuild has followed.
+- Floating PIE directly on `Level_Full_Flow` reached Evade through the demo skips. Missed flurry attempts replayed the lesson. Holding F through a hit then logged burst at 09:51:05.683 UTC, exhausted at 09:51:07.186, recovering at 09:51:08.190, and `FTUE Completed` at 09:51:11.420. The effective Blueprint `EvadeSuccessFeedbackDuration` is 3 seconds, so completion occurred after flurry recovery plus that feedback interval. The current evade clip was allowed to finish by code; a frame-by-frame visual capture of its end was not taken. F was released and PIE stopped.
+- `git diff --check` passes. This checkpoint accompanies the FTUE Evade timing implementation in the next commit after `ce83a6b`; physical gamepad and packaged play were not exercised.
 
 ## FTUE Evade animation follow-up: pre-change checkpoint
 
