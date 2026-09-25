@@ -357,7 +357,7 @@ void UCombatRunWidget::SetTutorialPanelLayout(bool bTutorial)
 	if (UOverlaySlot* PanelSlot = Cast<UOverlaySlot>(MessagePanel->GetParent()->Slot))
 	{
 		PanelSlot->SetVerticalAlignment(bTutorial ? VAlign_Top : VAlign_Center);
-		PanelSlot->SetPadding(bTutorial ? FMargin(0.0f, 150.0f, 0.0f, 0.0f) : FMargin(0.0f));
+		PanelSlot->SetPadding(bTutorial ? FMargin(0.0f, 120.0f, 0.0f, 0.0f) : FMargin(0.0f));
 	}
 	if (UOverlaySlot* CueSlot = Cast<UOverlaySlot>(CombatCueText->Slot))
 	{
