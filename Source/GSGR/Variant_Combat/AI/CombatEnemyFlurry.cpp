@@ -137,6 +137,11 @@ void ACombatEnemy::TickFlurry()
 		{
 			FlurryState = ECombatFlurryState::Recovering;
 			FlurryStateEndTime = Now + FMath::Max(0.1f, FlurryRecoveryDuration);
+			if (bExhaustedMeshRotationApplied)
+			{
+				GetMesh()->SetRelativeRotation(PreExhaustedMeshRotation);
+				bExhaustedMeshRotationApplied = false;
+			}
 			if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
 			{
 				if (ExhaustedMontage) Anim->Montage_Stop(0.15f, ExhaustedMontage);
@@ -162,6 +167,9 @@ void ACombatEnemy::FinishFlurry()
 	FlurryState = ECombatFlurryState::Exhausted;
 	FlurryStateEndTime = GetWorld()->GetTimeSeconds() + FMath::Clamp(ExhaustedDuration, 0.5f, 1.0f);
 	CancelAttacks();
+	PreExhaustedMeshRotation = GetMesh()->GetRelativeRotation();
+	GetMesh()->SetRelativeRotation(PreExhaustedMeshRotation + FRotator(0.0f, -90.0f, 0.0f));
+	bExhaustedMeshRotationApplied = true;
 	if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
 	{
 		if (ExhaustedAnimation && ComboAttackMontage && !ComboAttackMontage->SlotAnimTracks.IsEmpty())
@@ -176,6 +184,11 @@ void ACombatEnemy::FinishFlurry()
 
 void ACombatEnemy::ResetFlurry()
 {
+	if (bExhaustedMeshRotationApplied)
+	{
+		GetMesh()->SetRelativeRotation(PreExhaustedMeshRotation);
+		bExhaustedMeshRotationApplied = false;
+	}
 	if (FlurryState == ECombatFlurryState::Windup)
 	{
 		if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())

@@ -129,6 +129,8 @@ protected:
 	int32 NormalAttacksSinceFlurry = 0;
 	UPROPERTY(Transient)
 	TObjectPtr<UAnimMontage> ExhaustedMontage;
+	FRotator PreExhaustedMeshRotation = FRotator::ZeroRotator;
+	bool bExhaustedMeshRotationApplied = false;
 
 	void BeginFlurryWindup();
 	void TickFlurry();
